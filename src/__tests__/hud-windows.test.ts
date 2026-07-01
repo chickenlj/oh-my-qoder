@@ -200,7 +200,7 @@ describe('HUD Windows Compatibility', () => {
       // Should use path.join for constructing paths
       expect(content).toContain("p.join(d,'plugins','cache','omq','oh-my-qoder')");
       expect(content).not.toContain('ls ~/.qoder/AGENTS-*.md');
-      expect(content).toContain("find \"${CLAUDE_CONFIG_DIR:-$HOME/.qoder}\" -maxdepth 1 -type f -name 'AGENTS-*.md' -print 2>/dev/null");
+      expect(content).toContain("find \"${QODER_CONFIG_DIR:-$HOME/.qoder}\" -maxdepth 1 -type f -name 'AGENTS-*.md' -print 2>/dev/null");
     });
 
     it('hud skill should use cross-platform Node.js commands for plugin detection', () => {

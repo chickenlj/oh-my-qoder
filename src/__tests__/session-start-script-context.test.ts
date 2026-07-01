@@ -206,7 +206,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
     mkdirSync(pluginRoot, { recursive: true });
     writeFileSync(join(pluginRoot, 'package.json'), JSON.stringify({ version: '1.0.0', type: 'module' }));
     writeFileSync(join(claudeDir, 'hud', 'omq-hud.mjs'), '');
-    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omq-hud.mjs' }));
+    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.qoder/hud/omq-hud.mjs' }));
     writeFileSync(
       join(claudeDir, '.omq', 'update-check.json'),
       JSON.stringify({
@@ -250,7 +250,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
   });
 
   it('does not show update notice when stale QODER_PLUGIN_ROOT is older than plugin cache', () => {
-    const claudeDir = join(fakeHome, '.claude');
+    const claudeDir = join(fakeHome, '.qoder');
     const stalePluginRoot = join(claudeDir, 'plugins', 'cache', 'omq', 'oh-my-qoder', '4.14.4');
     const latestPluginRoot = join(claudeDir, 'plugins', 'cache', 'omq', 'oh-my-qoder', '4.14.5');
     mkdirSync(join(claudeDir, '.omq'), { recursive: true });
@@ -260,7 +260,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
     writeFileSync(join(stalePluginRoot, 'package.json'), JSON.stringify({ version: '4.14.4', type: 'module' }));
     writeFileSync(join(latestPluginRoot, 'package.json'), JSON.stringify({ version: '4.14.5', type: 'module' }));
     writeFileSync(join(claudeDir, 'hud', 'omq-hud.mjs'), '');
-    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omq-hud.mjs' }));
+    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.qoder/hud/omq-hud.mjs' }));
     writeFileSync(
       join(claudeDir, '.omq', 'update-check.json'),
       JSON.stringify({

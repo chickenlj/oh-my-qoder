@@ -5,7 +5,7 @@
 ## Step 3.1: Verify Plugin Installation
 
 ```bash
-grep -q "oh-my-qoder" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json" && echo "Plugin verified" || echo "Plugin NOT found - run: claude /install-plugin oh-my-qoder"
+grep -q "oh-my-qoder" "${QODER_CONFIG_DIR:-$HOME/.qoder}/settings.json" && echo "Plugin verified" || echo "Plugin NOT found - run: qodercli plugins install oh-my-qoder"
 ```
 
 ## Step 3.2: Offer MCP Server Configuration
@@ -44,7 +44,7 @@ Use AskUserQuestion:
 First, read the current settings.json:
 
 ```bash
-SETTINGS_FILE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
+SETTINGS_FILE="${QODER_CONFIG_DIR:-$HOME/.qoder}/settings.json"
 
 if [ -f "$SETTINGS_FILE" ]; then
   echo "Current settings.json found"
@@ -54,12 +54,12 @@ else
 fi
 ```
 
-Then use the Read tool to read `${CLAUDE_CONFIG_DIR:-~/.claude}/settings.json` (if it exists). Use the Edit tool to merge the teams configuration while preserving ALL existing settings.
+Then use the Read tool to read `${QODER_CONFIG_DIR:-~/.qoder}/settings.json` (if it exists). Use the Edit tool to merge the teams configuration while preserving ALL existing settings.
 
 Use jq to safely merge without overwriting existing settings:
 
 ```bash
-SETTINGS_FILE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
+SETTINGS_FILE="${QODER_CONFIG_DIR:-$HOME/.qoder}/settings.json"
 
 if ! command -v jq >/dev/null 2>&1; then
   echo "ERROR: jq is required to update $SETTINGS_FILE safely."
@@ -107,7 +107,7 @@ Use AskUserQuestion:
 If user chooses anything other than "Auto", add `teammateMode` to settings.json:
 
 ```bash
-SETTINGS_FILE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
+SETTINGS_FILE="${QODER_CONFIG_DIR:-$HOME/.qoder}/settings.json"
 
 if ! command -v jq >/dev/null 2>&1; then
   echo "ERROR: jq is required to update $SETTINGS_FILE safely."
@@ -151,7 +151,7 @@ Use AskUserQuestion with multiple questions:
 Store the team configuration in `~/.qoder/.omc-config.json`:
 
 ```bash
-CONFIG_FILE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.omc-config.json"
+CONFIG_FILE="${QODER_CONFIG_DIR:-$HOME/.qoder}/.omc-config.json"
 mkdir -p "$(dirname "$CONFIG_FILE")"
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -193,7 +193,7 @@ echo "  Model: teammates inherit your session model"
 After all modifications, verify settings.json is valid JSON and contains the expected keys:
 
 ```bash
-SETTINGS_FILE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
+SETTINGS_FILE="${QODER_CONFIG_DIR:-$HOME/.qoder}/settings.json"
 
 if jq empty "$SETTINGS_FILE" 2>/dev/null; then
   echo "settings.json: valid JSON"

@@ -88,8 +88,8 @@ function normalizePath(value: string): string {
   return value.replace(/\\/g, '/').replace(/\/+$/, '');
 }
 
-function isDefaultClaudeConfigDir(): boolean {
-  return normalizePath(getQoderConfigDir()) === normalizePath(join(homedir(), '.claude'));
+function isDefaultQoderConfigDir(): boolean {
+  return normalizePath(getQoderConfigDir()) === normalizePath(join(homedir(), '.qoder'));
 }
 
 function quoteCommandPath(path: string): string {
@@ -98,15 +98,15 @@ function quoteCommandPath(path: string): string {
 
 function buildHookCommand(filename: string): string {
   if (isWindows()) {
-    if (isDefaultClaudeConfigDir()) {
-      return `node "\${QODER_CONFIG_DIR:-$HOME/.claude}/hooks/${filename}"`;
+    if (isDefaultQoderConfigDir()) {
+      return `node "\${QODER_CONFIG_DIR:-$HOME/.qoder}/hooks/${filename}"`;
     }
 
     return `node ${quoteCommandPath(join(getQoderConfigDir(), 'hooks', filename).replace(/\\/g, '/'))}`;
   }
 
-  if (isDefaultClaudeConfigDir()) {
-    return `node "\${QODER_CONFIG_DIR:-$HOME/.claude}/hooks/${filename}"`;
+  if (isDefaultQoderConfigDir()) {
+    return `node "\${QODER_CONFIG_DIR:-$HOME/.qoder}/hooks/${filename}"`;
   }
 
   return `node ${quoteCommandPath(join(getQoderConfigDir(), 'hooks', filename).replace(/\\/g, '/'))}`;

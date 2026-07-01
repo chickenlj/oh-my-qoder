@@ -184,8 +184,8 @@ export function prepareOmqLaunchConfigDir(baseConfigDir = getQoderConfigDir()): 
   return runtimeConfigDir;
 }
 
-function isDefaultClaudeConfigDirPath(configDir: string): boolean {
-  return configDir === join(homedir(), '.claude');
+function isDefaultQoderConfigDirPath(configDir: string): boolean {
+  return configDir === join(homedir(), '.qoder');
 }
 
 /**
@@ -773,7 +773,7 @@ export async function launchCommand(args: string[]): Promise<void> {
   }
 
   const launchConfigDir = prepareOmqLaunchConfigDir();
-  if (isDefaultClaudeConfigDirPath(launchConfigDir)) {
+  if (isDefaultQoderConfigDirPath(launchConfigDir)) {
     delete process.env.QODER_CONFIG_DIR;
   } else {
     process.env.QODER_CONFIG_DIR = launchConfigDir;

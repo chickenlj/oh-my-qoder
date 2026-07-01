@@ -48,7 +48,7 @@ Prefer skills that encode decision-making heuristics, constraints, pitfalls, and
      ---
      ```
    - Write learned/user/project skills to flat file-backed paths:
-     - `${CLAUDE_CONFIG_DIR:-~/.qoder}/skills/omq-learned/<skill-name>.md`
+     - `${QODER_CONFIG_DIR:-~/.qoder}/skills/omq-learned/<skill-name>.md`
      - `.omq/skills/<skill-name>.md`
    - Remember that uncommitted skills are still worktree-local until committed or copied to a user-level directory.
 5. Draft the rest of the skill file with clear triggers, steps, success criteria, and pitfalls.

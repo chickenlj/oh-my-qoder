@@ -111,7 +111,7 @@ This classification ensures expertise can be updated independently without desta
 
 ### Step 4: Save Location
 
-- **User-level**: `${CLAUDE_CONFIG_DIR:-~/.qoder}/skills/omq-learned/<skill-name>.md` - Rare. Only for truly portable insights.
+- **User-level**: `${QODER_CONFIG_DIR:-~/.qoder}/skills/omq-learned/<skill-name>.md` - Rare. Only for truly portable insights.
 - **Project-level**: `.omq/skills/<skill-name>.md` - Default. Intended to be committed with the repo when you want the team to keep the skill. In linked worktrees, uncommitted skills are still worktree-local and disappear if that worktree is deleted.
 
 ### Required File Format

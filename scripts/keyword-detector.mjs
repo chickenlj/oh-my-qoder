@@ -964,7 +964,7 @@ function linkRalphTeam(directory, sessionId, omqRoot) {
 
 /**
  * Check if the team feature is enabled in Qoder CLI settings.
- * Reads settings.json from [$QODER_CONFIG_DIR|~/.claude] and checks for
+ * Reads settings.json from [$QODER_CONFIG_DIR|~/.qoder] and checks for
  * CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS env var.
  * @returns {boolean} true if team feature is enabled
  */

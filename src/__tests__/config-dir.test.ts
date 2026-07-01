@@ -197,7 +197,7 @@ describe('QODER_CONFIG_DIR downstream integration', () => {
     expect(globalRules.some(c => c.path.includes('my-rule.md'))).toBe(true);
   });
 
-  it('uses the active config dir rather than default ~/.claude/rules for user rules', () => {
+  it('uses the active config dir rather than default ~/.qoder/rules for user rules', () => {
     const customRulesDir = join(tempDir, 'rules');
     mkdirSync(customRulesDir, { recursive: true });
     writeFileSync(join(customRulesDir, 'custom-rule.md'), '# Custom Rule');
