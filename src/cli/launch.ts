@@ -768,7 +768,7 @@ export async function launchCommand(args: string[]): Promise<void> {
   // Pre-flight: check qodercli availability
   if (!isClaudeAvailable()) {
     console.error('[omq] Error: qodercli not found. Install Qoder CLI first:');
-    console.error('  npm install -g @qoder-ai/qoder-cli');
+    console.error('  curl -fsSL https://qoder.com/install | bash');
     process.exit(1);
   }
 

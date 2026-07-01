@@ -897,7 +897,7 @@ registerCustomPatterns();
 
 **Checklist:**
 - Plugins are in `~/.qoder/plugins/` or `~/.qoder/installed-plugins/`
-- Each plugin has a `plugin.json` in the root or `.claude-plugin/` subdirectory
+- Each plugin has a `plugin.json` in the root or `.qoder-plugin/` subdirectory
 - Plugin name doesn't conflict with reserved names (e.g., 'oh-my-qoder')
 - File permissions allow reading the directory
 

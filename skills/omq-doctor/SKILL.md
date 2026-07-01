@@ -17,7 +17,7 @@ You are the OMQ Doctor - diagnose and fix installation issues.
 ```bash
 # Get installed and latest versions (cross-platform)
 node -e "const p=require('path'),f=require('fs'),h=require('os').homedir(),d=process.env.CLAUDE_CONFIG_DIR||p.join(h,'.qoder'),b=p.join(d,'plugins','cache','omq','oh-my-qoder');try{const v=f.readdirSync(b).filter(x=>/^\d/.test(x)).sort((a,c)=>a.localeCompare(c,void 0,{numeric:true}));console.log('Installed:',v.length?v[v.length-1]:'(none)')}catch{console.log('Installed: (none)')}"
-npm view oh-my-claude-sisyphus version 2>/dev/null || echo "Latest: (unavailable)"
+npm view oh-my-qoder version 2>/dev/null || echo "Latest: (unavailable)"
 ```
 
 **Diagnosis**:
@@ -201,7 +201,7 @@ node -e "const p=require('path'),f=require('fs'),h=require('os').homedir(),d=pro
 ### Fix: Missing/Outdated AGENTS.md
 Fetch latest from GitHub and write to `${CLAUDE_CONFIG_DIR:-~/.qoder}/AGENTS.md`:
 ```
-WebFetch(url: "https://raw.githubusercontent.com/Yeachan-Heo/oh-my-qoder/main/docs/CLAUDE.md", prompt: "Return the complete raw markdown content exactly as-is")
+WebFetch(url: "https://raw.githubusercontent.com/chickenlj/oh-my-qoder/main/docs/CLAUDE.md", prompt: "Return the complete raw markdown content exactly as-is")
 ```
 
 ### Fix: Legacy Curl-Installed Content

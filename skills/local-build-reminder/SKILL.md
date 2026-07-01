@@ -52,7 +52,7 @@ If multiple TS files were edited in a row, just remind once at the end.
 | `skills/**/SKILL.md`           | Yes                    | No           |
 | `agents/**/*.md`               | Yes                    | No           |
 | `commands/**/*.md`             | Yes                    | No           |
-| `.claude-plugin/plugin.json`   | Yes (on Claude restart)| No           |
+| `.qoder-plugin/plugin.json`    | Yes (on Qoder restart) | No           |
 | `docs/**/*.md`                 | Cosmetic only          | No           |
 
 ## One-command setup for hands-free dev

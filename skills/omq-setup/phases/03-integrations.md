@@ -143,9 +143,10 @@ Use AskUserQuestion with multiple questions:
 **Question 2:** "Which CLI provider should teammates use by default?"
 
 **Options:**
-1. **claude (Recommended)** - Default provider with the widest compatibility
-2. **codex** - Use Codex CLI workers by default when installed
-3. **gemini** - Use Gemini CLI workers by default when installed
+1. **qwen (Recommended)** - Qoder CLI (qodercli), the default provider for oh-my-qoder
+2. **claude** - Claude CLI with widest compatibility
+3. **codex** - Use Codex CLI workers by default when installed
+4. **gemini** - Use Gemini CLI workers by default when installed
 
 Store the team configuration in `~/.qoder/.omc-config.json`:
 

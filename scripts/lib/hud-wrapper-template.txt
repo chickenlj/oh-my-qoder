@@ -213,7 +213,6 @@ async function main() {
   // Tests can disable this fallback to avoid host-global package nondeterminism.
   if (process.env.OMC_HUD_DISABLE_NPM_FALLBACK !== "1") {
     const npmHudPackages = [
-      "oh-my-claude-sisyphus/dist/hud/index.js",
       "oh-my-qoder/dist/hud/index.js",
     ];
     for (const hudPackage of npmHudPackages) {

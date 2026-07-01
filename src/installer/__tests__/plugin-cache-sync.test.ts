@@ -22,7 +22,7 @@ function writePayloadTree(root: string, version = '9.9.9-test'): void {
   writeFile(join(root, 'commands', 'omq-setup.md'), 'Read skills/omq-setup/SKILL.md and pass $ARGUMENTS.\n');
   writeFile(join(root, 'templates', 'deliverables.json'), '{}\n');
   writeFile(join(root, 'docs', 'CLAUDE.md'), '# docs\n');
-  writeFile(join(root, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'oh-my-qoder', commands: './commands/', skills: ['./skills/plan/'] }, null, 2));
+  writeFile(join(root, '.qoder-plugin', 'plugin.json'), JSON.stringify({ name: 'oh-my-qoder', commands: './commands/', skills: ['./skills/plan/'] }, null, 2));
   writeFile(join(root, '.mcp.json'), '{}\n');
   writeFile(join(root, 'README.md'), '# readme\n');
   writeFile(join(root, 'LICENSE'), 'MIT\n');
@@ -178,7 +178,7 @@ describe('syncInstalledPluginPayload', () => {
     const cacheRoot = join(configDir, 'plugins', 'cache', 'omq', 'oh-my-qoder', '4.14.4');
 
     writePayloadTree(cacheRoot, '4.14.4');
-    writeFileSync(join(cacheRoot, '.claude-plugin', 'plugin.json'), '{not valid json');
+    writeFileSync(join(cacheRoot, '.qoder-plugin', 'plugin.json'), '{not valid json');
     mkdirSync(join(configDir, 'plugins'), { recursive: true });
     writeFileSync(
       join(configDir, 'plugins', 'installed_plugins.json'),
@@ -195,7 +195,7 @@ describe('syncInstalledPluginPayload', () => {
 
     expect(validation.valid).toBe(false);
     expect(validation.errors).toEqual(expect.arrayContaining([
-      expect.stringContaining('Invalid plugin manifest: .claude-plugin/plugin.json'),
+      expect.stringContaining('Invalid plugin manifest: .qoder-plugin/plugin.json'),
     ]));
     expect(installer.hasPluginProvidedAgentFiles()).toBe(false);
   });
@@ -236,7 +236,7 @@ describe('syncInstalledPluginPayload', () => {
     const cacheRoot = join(configDir, 'plugins', 'cache', 'omq', 'oh-my-qoder', '4.14.4');
 
     writePayloadTree(cacheRoot, '4.14.4');
-    writeFileSync(join(cacheRoot, '.claude-plugin', 'plugin.json'), JSON.stringify({
+    writeFileSync(join(cacheRoot, '.qoder-plugin', 'plugin.json'), JSON.stringify({
       name: 'oh-my-qoder',
       commands: 17,
       skills: './skills/plan/',
@@ -247,8 +247,8 @@ describe('syncInstalledPluginPayload', () => {
 
     expect(validation.valid).toBe(false);
     expect(validation.errors).toEqual(expect.arrayContaining([
-      'Invalid plugin manifest: .claude-plugin/plugin.json commands must be a non-empty relative path',
-      'Invalid plugin manifest: .claude-plugin/plugin.json skills must be a non-empty array',
+      'Invalid plugin manifest: .qoder-plugin/plugin.json commands must be a non-empty relative path',
+      'Invalid plugin manifest: .qoder-plugin/plugin.json skills must be a non-empty array',
     ]));
   });
 
@@ -257,7 +257,7 @@ describe('syncInstalledPluginPayload', () => {
     const cacheRoot = join(configDir, 'plugins', 'cache', 'omq', 'oh-my-qoder', '4.14.4');
 
     writePayloadTree(cacheRoot, '4.14.4');
-    writeFileSync(join(cacheRoot, '.claude-plugin', 'plugin.json'), JSON.stringify({
+    writeFileSync(join(cacheRoot, '.qoder-plugin', 'plugin.json'), JSON.stringify({
       name: 'oh-my-qoder',
       commands: './commands/',
       skills: ['../outside/'],

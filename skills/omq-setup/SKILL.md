@@ -17,7 +17,7 @@ Note: All `~/.qoder/...` paths in this guide respect `CLAUDE_CONFIG_DIR` when th
 Choose this setup flow when the user wants to **install, refresh, or repair OMQ itself**.
 
 - Marketplace/plugin install users should land here after `/plugin install oh-my-qoder`
-- npm users should land here after `npm i -g oh-my-claude-sisyphus@latest`
+- npm users should land here after `npm i -g oh-my-qoder@latest`
 - local-dev and worktree users should land here after updating the checked-out repo and rerunning setup
 
 ## Flag Parsing
@@ -79,7 +79,7 @@ EXAMPLES:
   /oh-my-qoder:omq-setup --global  # Update all projects
   /oh-my-qoder:omq-setup --force   # Re-run full setup wizard
 
-For more info: https://github.com/Yeachan-Heo/oh-my-qoder
+For more info: https://github.com/chickenlj/oh-my-qoder
 ```
 
 
