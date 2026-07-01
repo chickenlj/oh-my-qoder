@@ -90,11 +90,11 @@ async function checkForUpdates(currentVersion) {
     return cached.updateAvailable ? cached : null;
   }
 
-  // Fetch latest version from npm
+  // Fetch package.json from the GitHub repo (git-based, publish-free)
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 2000);
   try {
-    const response = await fetch('https://registry.npmjs.org/oh-my-claude-sisyphus/latest', {
+    const response = await fetch('https://raw.githubusercontent.com/chickenlj/oh-my-qoder/main/package.json', {
       signal: controller.signal
     });
 
@@ -227,8 +227,8 @@ function formatUpdateNoticeForUser(updateInfo, options = {}) {
   const latestVersion = updateInfo?.latestVersion || 'latest';
   const currentVersion = updateInfo?.currentVersion || 'unknown';
   const action = options.autoUpgradePrompt === false
-    ? 'To update later, run: omq update'
-    : 'Run /update to upgrade now, or use /plugin install oh-my-qoder';
+    ? 'To update later: git pull && npm run build, then /plugins reload'
+    : 'Update with: git pull && npm run build, then /plugins reload';
   return `[OMQ UPDATE AVAILABLE] oh-my-qoder v${latestVersion} is available (current: v${currentVersion}). ${action}`;
 }
 
@@ -513,12 +513,12 @@ async function main() {
     const userMessages = [];
 
     // Check for updates (non-blocking)
-    // Read version from OMC's own package.json, not the project's (fixes #516)
+    // Read version from OMQ's own package.json, not the project's (fixes #516)
     let currentVersion = null;
     for (let i = 1; i <= 4; i++) {
       const candidate = join(__dirname, ...Array(i).fill('..'), 'package.json');
       const pkg = readJsonFile(candidate);
-      if ((pkg?.name === 'oh-my-claude-sisyphus' || pkg?.name === 'oh-my-qoder') && pkg?.version) {
+      if (pkg?.name === 'oh-my-qoder' && pkg?.version) {
         currentVersion = pkg.version;
         break;
       }

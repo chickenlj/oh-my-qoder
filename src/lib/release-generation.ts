@@ -1,5 +1,5 @@
 import { execSync } from 'child_process';
-const DEFAULT_REPO_URL = 'https://github.com/Yeachan-Heo/oh-my-qoder';
+const DEFAULT_REPO_URL = 'https://github.com/chickenlj/oh-my-qoder';
 
 export interface ReleasePullRequest {
   number: string;
@@ -247,10 +247,10 @@ export function generateReleaseBody(
   let body = changelog;
 
   body += `\n### Install / Update\n\n`;
-  body += '```bash\n';
-  body += `npm install -g oh-my-claude-sisyphus@${version}\n`;
+  body += 'Fresh install:\n```bash\n';
+  body += `git clone ${repoUrl}.git\ncd oh-my-qoder && npm install && npm run build\nqodercli plugins install "$(pwd)"\n`;
   body += '```\n\n';
-  body += 'Or reinstall the plugin:\n```bash\nclaude /install-plugin oh-my-qoder\n```\n';
+  body += 'Already installed? Update in place:\n```bash\ngit pull && npm run build\n```\nThen run `/plugins reload` inside Qoder CLI.\n';
 
   if (prevTag) {
     body += `\n**Full Changelog**: ${repoUrl}/compare/${prevTag}...v${version}\n`;

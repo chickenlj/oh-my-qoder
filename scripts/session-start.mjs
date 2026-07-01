@@ -453,8 +453,8 @@ function formatUpdateNoticeForUser(updateInfo, options = {}) {
   const latestVersion = updateInfo?.latestVersion || 'latest';
   const currentVersion = updateInfo?.currentVersion || 'unknown';
   const action = options.autoUpgradePrompt === false
-    ? 'To update later, run: omq update'
-    : 'Run /update to upgrade now, or use /plugin install oh-my-qoder';
+    ? 'To update later: git pull && npm run build, then /plugins reload'
+    : 'Update with: git pull && npm run build, then /plugins reload';
   return `[OMQ UPDATE AVAILABLE] oh-my-qoder v${latestVersion} is available (current: v${currentVersion}). ${action}`;
 }
 
@@ -635,8 +635,8 @@ function shouldNotifyDrift(driftInfo) {
   return true;
 }
 
-// Check npm registry for available update (with 24h cache)
-async function checkNpmUpdate(currentVersion) {
+// Check GitHub for the latest committed version (with 24h cache)
+async function checkForUpdates(currentVersion) {
   const cacheFile = getUpdateCheckCachePath();
   const CACHE_DURATION = 24 * 60 * 60 * 1000;
   const now = Date.now();
@@ -653,11 +653,11 @@ async function checkNpmUpdate(currentVersion) {
     }
   } catch {}
 
-  // Fetch from npm registry with 2s timeout
+  // Fetch package.json from the GitHub repo (git-based, publish-free) with 2s timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 2000);
   try {
-    const response = await fetch('https://registry.npmjs.org/oh-my-claude-sisyphus/latest', {
+    const response = await fetch('https://raw.githubusercontent.com/chickenlj/oh-my-qoder/main/package.json', {
       signal: controller.signal
     });
     if (!response.ok) return null;
@@ -811,7 +811,7 @@ async function main() {
     try {
       const pluginVersion = getPluginVersion();
       if (pluginVersion) {
-        const updateInfo = await checkNpmUpdate(pluginVersion);
+        const updateInfo = await checkForUpdates(pluginVersion);
         if (updateInfo) {
           const omqConfig = readJsonFile(join(configDir, '.omq-config.json')) || {};
           userMessages.push(formatUpdateNoticeForUser(updateInfo, { autoUpgradePrompt: omqConfig.autoUpgradePrompt !== false }));

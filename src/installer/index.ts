@@ -1213,7 +1213,7 @@ function getGlobalInstalledPackageRoot(): string | null {
       return null;
     }
 
-    const globalPackageRoot = join(npmRoot, 'oh-my-claude-sisyphus');
+    const globalPackageRoot = join(npmRoot, 'oh-my-qoder');
     return existsSync(globalPackageRoot) ? globalPackageRoot : null;
   } catch {
     return null;

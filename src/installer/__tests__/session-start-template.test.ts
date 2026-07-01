@@ -253,7 +253,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
     expect(output.continue).toBe(true);
     expect(output.systemMessage).toContain('[OMQ UPDATE AVAILABLE]');
     expect(output.systemMessage).toContain('v999.0.0');
-    expect(output.systemMessage).toContain('/update');
+    expect(output.systemMessage).toContain('git pull && npm run build');
     expect(output.hookSpecificOutput?.additionalContext ?? '').not.toContain('[OMQ UPDATE AVAILABLE]');
     expect(output.hookSpecificOutput?.additionalContext ?? '').not.toContain('999.0.0');
   });
@@ -288,8 +288,8 @@ ${'- oversized startup guidance\n'.repeat(700)}
     });
 
     const output = JSON.parse(result.stdout) as { systemMessage?: string };
-    expect(output.systemMessage).toContain('To update later, run: omq update');
-    expect(output.systemMessage).not.toContain('Run /update to upgrade now');
+    expect(output.systemMessage).toContain('To update later: git pull && npm run build, then /plugins reload');
+    expect(output.systemMessage).not.toContain('Update with: git pull');
   });
 
 });

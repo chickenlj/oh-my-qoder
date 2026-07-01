@@ -199,7 +199,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
   });
 
   it('surfaces update notices through systemMessage without injecting them into additionalContext', () => {
-    const claudeDir = join(fakeHome, '.claude');
+    const claudeDir = join(fakeHome, '.qoder');
     const pluginRoot = join(tempDir, 'plugin');
     mkdirSync(join(claudeDir, '.omq'), { recursive: true });
     mkdirSync(join(claudeDir, 'hud'), { recursive: true });
@@ -244,7 +244,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
     expect(output.continue).toBe(true);
     expect(output.systemMessage).toContain('[OMQ UPDATE AVAILABLE]');
     expect(output.systemMessage).toContain('v999.0.0');
-    expect(output.systemMessage).toContain('/update');
+    expect(output.systemMessage).toContain('git pull && npm run build');
     expect(output.hookSpecificOutput?.additionalContext ?? '').not.toContain('[OMQ UPDATE AVAILABLE]');
     expect(output.hookSpecificOutput?.additionalContext ?? '').not.toContain('999.0.0');
   });

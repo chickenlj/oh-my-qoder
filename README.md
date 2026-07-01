@@ -91,19 +91,30 @@ Once the plugin is registered, OMQ works entirely inside your Qoder CLI sessions
 
 ### Magic keywords (natural language)
 
-Type a keyword anywhere in your message and OMQ activates the matching workflow automatically:
+Start your message with a workflow keyword followed by a plain-language task. OMQ detects it and runs the matching workflow — no flags, no setup:
 
-| Keyword(s) | Activates | What it does |
-|---|---|---|
-| `autopilot`, `build me`, `I want a` | Autopilot | Full idea → spec → plan → code → QA → validate pipeline |
-| `ralph`, `keep going`, `don't stop` | Ralph | Self-referential persistence loop with verification |
-| `ultrawork`, `parallel` | UltraWork | Maximum-parallelism multi-agent execution |
-| `team` | Team | N coordinated agents on a shared task list |
-| `plan this`, `let's plan` | Plan | Strategic planning (optionally consensus-based) |
-| `ralplan`, `consensus plan` | RalPlan | Planner + architect + critic consensus deliberation |
-| `cleanup`, `deslop` | AI-Slop Cleaner | Regression-safe dead-code / duplication cleanup |
-| `interview`, `gather requirements` | Deep Interview | Socratic, ambiguity-gated requirement gathering |
-| `cancel`, `stop`, `abort` | Cancel | Ends active execution modes |
+```text
+autopilot build a REST API for managing tasks, with tests
+ralph fix all failing tests, don't stop until green
+ultrawork add pagination to the users and orders endpoints
+team 3:executor implement the billing module
+plan design a caching layer for the search service
+```
+
+The main keywords:
+
+| Keyword | Workflow |
+|---|---|
+| `autopilot` | Full pipeline: idea → spec → plan → code → QA → validate |
+| `ralph` | Persistence loop that keeps going until the task is verified done |
+| `ultrawork` | Maximum-parallelism multi-agent execution |
+| `team` | N coordinated agents on a shared task list |
+| `plan` / `ralplan` | Strategic planning (`ralplan` adds planner + architect + critic consensus) |
+| `cleanup` | Regression-safe dead-code / duplication cleanup |
+| `interview` | Socratic, ambiguity-gated requirement gathering |
+| `cancel` | Stop any active workflow |
+
+> Everyday phrasing also triggers these — e.g. "build me a…" / "I want a…" start Autopilot, "keep going" / "don't stop" start Ralph. The explicit keywords above are the reliable path.
 
 ### Slash commands (in-session)
 

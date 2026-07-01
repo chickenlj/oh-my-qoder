@@ -25,9 +25,9 @@ describe('BUG 4: session-start hooks clear timeout in finally', () => {
       'utf-8',
     );
 
-    // The checkNpmUpdate function should use finally for clearTimeout
-    // Look for the npm fetch section
-    const fetchSection = source.indexOf('registry.npmjs.org');
+    // The checkForUpdates function should use finally for clearTimeout
+    // Look for the GitHub fetch section
+    const fetchSection = source.indexOf('raw.githubusercontent.com');
     expect(fetchSection).toBeGreaterThan(-1);
 
     // Find the surrounding try/finally block
