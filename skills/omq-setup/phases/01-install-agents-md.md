@@ -17,7 +17,7 @@ Set `CONFIG_TARGET` to `local` or `global` based on user's choice.
 
 If `CONFIG_TARGET=global` and `~/.qoder/AGENTS.md` already exists without OMQ markers, ask a second explicit question before running setup:
 
-**Question:** "Global setup will change your base Claude config. Which behavior do you want?"
+**Question:** "Global setup will change your base Qoder config. Which behavior do you want?"
 
 **Options (default first):**
 1. **Overwrite base AGENTS.md (Recommended)** - plain `qodercli` and `omq` both use OMQ globally.
@@ -27,15 +27,15 @@ Set `GLOBAL_INSTALL_STYLE=overwrite` or `preserve` based on the user's choice. I
 
 ## Download and Install AGENTS.md
 
-**MANDATORY**: Always run this command. Do NOT skip. Do NOT use the Write tool. Let the setup script choose the safest canonical source (bundled `docs/CLAUDE.md` first, GitHub fallback only if needed).
+**MANDATORY**: Always run this command. Do NOT skip. Do NOT use the Write tool. Let the setup script choose the safest canonical source (bundled instruction source first, GitHub fallback only if needed).
 
 ```bash
-bash "${OMQ_SETUP_PLUGIN_ROOT:-${QODER_PLUGIN_ROOT}}/scripts/setup-claude-md.sh" <CONFIG_TARGET> [GLOBAL_INSTALL_STYLE]
+bash "${OMQ_SETUP_PLUGIN_ROOT:-${QODER_PLUGIN_ROOT}}/scripts/setup-agents-md.sh" <CONFIG_TARGET> [GLOBAL_INSTALL_STYLE]
 ```
 
 Replace `<CONFIG_TARGET>` with `local` or `global`. For local installs, omit the optional style argument. For global installs, pass `overwrite` or `preserve` when you know the user's choice; otherwise let the script default to `overwrite`.
 
-The script must install the canonical `docs/CLAUDE.md` content and preserve the required
+The script must install the canonical bundled instruction content and preserve the required
 `<!-- OMQ:START -->` / `<!-- OMQ:END -->` markers. Do **not** hand-write, summarize, or
 partially reconstruct AGENTS.md.
 

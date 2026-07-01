@@ -216,7 +216,7 @@ export function checkClaudeMdStatus(): ConflictReport['claudeMdStatus'] {
   }
 
   try {
-    // Check the main CLAUDE.md first
+    // Check the main AGENTS.md first
     const mainResult = checkFileForOmqMarkers(claudeMdPath);
     if (!mainResult) return null;
 
@@ -394,9 +394,9 @@ function isSupportedSetupFallbackSkill(legacySkillsDir: string, entry: string, b
     return false;
   }
 
-  // scripts/setup-claude-md.sh intentionally syncs the raw bundled
+  // scripts/setup-agents-md.sh intentionally syncs the raw bundled
   // skills/omq-reference/SKILL.md file into ~/.qoder/skills/omq-reference/SKILL.md
-  // as a Claude CLI fallback. Suppress only that exact, unmodified sync so real
+  // as a Qoder CLI fallback. Suppress only that exact, unmodified sync so real
   // legacy collisions and user-edited omq-reference copies still surface.
   if (entry.toLowerCase() !== baseName) {
     return false;
@@ -587,7 +587,7 @@ export function formatReport(report: ConflictReport, json: boolean): string {
   const lines: string[] = [];
 
   lines.push('');
-  lines.push(colors.bold('🔍 Oh-My-ClaudeCode Conflict Diagnostic'));
+  lines.push(colors.bold('🔍 Oh-My-Qoder Conflict Diagnostic'));
   lines.push(colors.gray('━'.repeat(60)));
   lines.push('');
 
@@ -607,9 +607,9 @@ export function formatReport(report: ConflictReport, json: boolean): string {
     lines.push('');
   }
 
-  // CLAUDE.md status
+  // AGENTS.md status
   if (report.claudeMdStatus) {
-    lines.push(colors.bold('📄 CLAUDE.md Status'));
+    lines.push(colors.bold('📄 AGENTS.md Status'));
     lines.push('');
 
     if (report.claudeMdStatus.hasMarkers) {
@@ -632,8 +632,8 @@ export function formatReport(report: ConflictReport, json: boolean): string {
     lines.push(`  ${colors.gray(`Path: ${report.claudeMdStatus.path}`)}`);
     lines.push('');
   } else {
-    lines.push(colors.bold('📄 CLAUDE.md Status'));
-    lines.push(`  ${colors.gray('No CLAUDE.md found')}`);
+    lines.push(colors.bold('📄 AGENTS.md Status'));
+    lines.push(`  ${colors.gray('No AGENTS.md found')}`);
     lines.push('');
   }
 
