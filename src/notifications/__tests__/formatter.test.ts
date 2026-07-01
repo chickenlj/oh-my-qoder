@@ -22,7 +22,7 @@ describe("formatSessionIdle", () => {
   it("should include idle header and waiting message", () => {
     const result = formatSessionIdle(basePayload);
     expect(result).toContain("# Session Idle");
-    expect(result).toContain("Claude has finished and is waiting for input.");
+    expect(result).toContain("Qoder CLI has finished and is waiting for input.");
   });
 
   it("should include project info in footer", () => {

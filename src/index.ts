@@ -1,5 +1,5 @@
 /**
- * Oh-My-ClaudeCode
+ * Oh-My-Qoder
  *
  * A multi-agent orchestration system for the Claude Agent SDK.
  * Inspired by oh-my-opencode, reimagined for Qoder CLI.

@@ -1,7 +1,7 @@
 /**
  * Builtin Skills Feature
  *
- * Provides bundled skills for Oh-My-ClaudeCode-OMQ.
+ * Provides bundled skills for Oh-My-Qoder-OMQ.
  *
  * Adapted from oh-my-opencode's builtin-skills feature.
  */

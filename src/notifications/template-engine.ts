@@ -281,7 +281,7 @@ const DEFAULT_TEMPLATES: Record<NotificationEvent, string> = {
 
   "session-idle":
     "# Session Idle\n\n" +
-    "Claude has finished and is waiting for input.\n" +
+    "Qoder CLI has finished and is waiting for input.\n" +
     "{{#if reason}}\n**Reason:** {{reason}}{{/if}}" +
     "{{#if modesDisplay}}\n**Modes:** {{modesDisplay}}{{/if}}" +
     "{{tmuxTailBlock}}" +
@@ -290,7 +290,7 @@ const DEFAULT_TEMPLATES: Record<NotificationEvent, string> = {
   "ask-user-question":
     "# Input Needed\n" +
     "{{#if question}}\n**Question:** {{question}}\n{{/if}}" +
-    "\nClaude is waiting for your response.\n\n{{footer}}",
+    "\nQoder CLI is waiting for your response.\n\n{{footer}}",
 
   "agent-call":
     "# Agent Spawned\n" +

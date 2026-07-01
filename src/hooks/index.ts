@@ -1,5 +1,5 @@
 /**
- * Hooks Module for Oh-My-ClaudeCode
+ * Hooks Module for Oh-My-Qoder
  *
  * This module provides the TypeScript bridge for Qoder CLI's native shell hook system.
  * Shell scripts call these TypeScript functions for complex logic processing.
