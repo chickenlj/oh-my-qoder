@@ -44,9 +44,9 @@
     "prepublishOnly": "npm run build && npm run compose-docs"
   },
   "dependencies": {
-    "@qoder-ai/qoder-agent-sdk": "^1.0.11",
     "@ast-grep/napi": "^0.31.0",
     "@modelcontextprotocol/sdk": "^1.26.0",
+    "@qoder-ai/qoder-agent-sdk": "^1.0.11",
     "@types/better-sqlite3": "^7.6.13",
     "ajv": "^8.17.1",
     "better-sqlite3": "^12.6.2",
@@ -64,10 +64,11 @@
     "prettier": "^3.4.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
+    "typescript-eslint": "^8.62.1",
     "vitest": "^4.0.17"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.19.0"
   },
   "author": "oh-my-qoder contributors",
   "license": "Apache-2.0",
