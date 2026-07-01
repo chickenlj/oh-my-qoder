@@ -1,0 +1,17 @@
+node_modules/
+*.log
+.DS_Store
+.omc/
+.omq/
+.idea/
+.qoder/
+.env
+.claude/
+
+dist/
+bridge/
+*.tsbuildinfo
+.tmp-post-tool-use-failure-tests/
+
+__pycache__/
+*.py[cod]

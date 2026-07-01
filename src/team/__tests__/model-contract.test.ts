@@ -1,0 +1,631 @@
+import { describe, it, expect, vi } from 'vitest';
+import { spawnSync } from 'child_process';
+import {
+  getContract,
+  buildLaunchArgs,
+  buildWorkerArgv,
+  getWorkerEnv,
+  parseCliOutput,
+  isPromptModeAgent,
+  getPromptModeArgs,
+  isCliAvailable,
+  shouldLoadShellRc,
+  resolveCliBinaryPath,
+  clearResolvedPathCache,
+  validateCliBinaryPath,
+  resolveClaudeWorkerModel,
+  shouldUseClaudeBareMode,
+  _testInternals,
+} from '../model-contract.js';
+
+vi.mock('child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('child_process')>();
+  return {
+    ...actual,
+    spawnSync: vi.fn(actual.spawnSync),
+  };
+});
+
+function setProcessPlatform(platform: NodeJS.Platform): () => void {
+  const originalPlatform = process.platform;
+  Object.defineProperty(process, 'platform', { value: platform, configurable: true });
+  return () => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+  };
+}
+
+function withAnthropicApiKey(value: string | undefined, fn: () => void): void {
+  const original = process.env.DASHSCOPE_API_KEY;
+  if (value === undefined) {
+    delete process.env.DASHSCOPE_API_KEY;
+  } else {
+    process.env.DASHSCOPE_API_KEY = value;
+  }
+  try {
+    fn();
+  } finally {
+    if (original === undefined) {
+      delete process.env.DASHSCOPE_API_KEY;
+    } else {
+      process.env.DASHSCOPE_API_KEY = original;
+    }
+  }
+}
+
+function countArg(args: string[], expected: string): number {
+  return args.filter(arg => arg === expected).length;
+}
+
+describe('model-contract', () => {
+  describe('backward-compat API shims', () => {
+    it('shouldLoadShellRc returns false for non-interactive compatibility mode', () => {
+      expect(shouldLoadShellRc()).toBe(false);
+    });
+
+    it('resolveCliBinaryPath resolves and caches paths', () => {
+      const mockSpawnSync = vi.mocked(spawnSync);
+      mockSpawnSync.mockReturnValue({ status: 0, stdout: '/usr/local/bin/claude\n', stderr: '', pid: 0, output: [], signal: null });
+
+      clearResolvedPathCache();
+      expect(resolveCliBinaryPath('qwen')).toBe('/usr/local/bin/claude');
+      expect(resolveCliBinaryPath('qwen')).toBe('/usr/local/bin/claude');
+      expect(mockSpawnSync).toHaveBeenCalledTimes(1);
+      clearResolvedPathCache();
+    });
+
+    it('resolveCliBinaryPath rejects unsafe names and paths', () => {
+      const mockSpawnSync = vi.mocked(spawnSync);
+      expect(() => resolveCliBinaryPath('../evil')).toThrow('Invalid CLI binary name');
+
+      mockSpawnSync.mockReturnValue({ status: 0, stdout: '/tmp/evil/claude\n', stderr: '', pid: 0, output: [], signal: null });
+      clearResolvedPathCache();
+      expect(() => resolveCliBinaryPath('qwen')).toThrow('untrusted location');
+      clearResolvedPathCache();
+      mockSpawnSync.mockRestore();
+    });
+
+    it('validateCliBinaryPath returns compatibility result object', () => {
+      const mockSpawnSync = vi.mocked(spawnSync);
+      mockSpawnSync.mockReturnValue({ status: 0, stdout: '/usr/local/bin/claude\n', stderr: '', pid: 0, output: [], signal: null });
+
+      clearResolvedPathCache();
+      expect(validateCliBinaryPath('qwen')).toEqual({
+        valid: true,
+        binary: 'qwen',
+        resolvedPath: '/usr/local/bin/claude',
+      });
+
+      mockSpawnSync.mockReturnValue({ status: 1, stdout: '', stderr: 'not found', pid: 0, output: [], signal: null });
+      clearResolvedPathCache();
+      const invalid = validateCliBinaryPath('missing-cli');
+      expect(invalid.valid).toBe(false);
+      expect(invalid.binary).toBe('missing-cli');
+      expect(invalid.reason).toContain('not found in PATH');
+      clearResolvedPathCache();
+      mockSpawnSync.mockRestore();
+    });
+
+    it('exposes compatibility test internals for path policy', () => {
+      expect(_testInternals.UNTRUSTED_PATH_PATTERNS.some(p => p.test('/tmp/evil'))).toBe(true);
+      expect(_testInternals.UNTRUSTED_PATH_PATTERNS.some(p => p.test('/usr/local/bin/claude'))).toBe(false);
+      const prefixes = _testInternals.getTrustedPrefixes();
+      expect(prefixes).toContain('/usr/local/bin');
+      expect(prefixes).toContain('/usr/bin');
+    });
+
+    it('isTrustedPrefix enforces directory boundaries (no sibling-prefix bypass)', () => {
+      const origHome = process.env.HOME;
+      process.env.HOME = '/home/tester';
+      try {
+        const { isTrustedPrefix } = _testInternals;
+        // exact trusted dir + true descendants are trusted
+        expect(isTrustedPrefix('/usr/bin')).toBe(true);
+        expect(isTrustedPrefix('/usr/bin/codex')).toBe(true);
+        expect(isTrustedPrefix('/usr/local/bin/claude')).toBe(true);
+        expect(isTrustedPrefix('/opt/homebrew/bin/gemini')).toBe(true);
+        expect(isTrustedPrefix('/home/tester/.local/bin/cli')).toBe(true);
+        // siblings whose name merely begins with a trusted prefix are NOT trusted
+        expect(isTrustedPrefix('/usr/bin-malicious/cli')).toBe(false);
+        expect(isTrustedPrefix('/home/tester/.local/bin-evil/cli')).toBe(false);
+        expect(isTrustedPrefix('/opt/homebrew-evil/x')).toBe(false);
+        expect(isTrustedPrefix('/home/tester/Downloads/cli')).toBe(false);
+        // custom trusted dirs (OMQ_TRUSTED_CLI_DIRS) get the same boundary check
+        const origCustom = process.env.OMQ_TRUSTED_CLI_DIRS;
+        process.env.OMQ_TRUSTED_CLI_DIRS = '/opt/mybins';
+        try {
+          expect(isTrustedPrefix('/opt/mybins/grok')).toBe(true);
+          expect(isTrustedPrefix('/opt/mybins-evil/grok')).toBe(false);
+        } finally {
+          if (origCustom === undefined) delete process.env.OMQ_TRUSTED_CLI_DIRS;
+          else process.env.OMQ_TRUSTED_CLI_DIRS = origCustom;
+        }
+      } finally {
+        if (origHome === undefined) delete process.env.HOME;
+        else process.env.HOME = origHome;
+      }
+    });
+  });
+  describe('getContract', () => {
+    it('returns contract for claude', () => {
+      const c = getContract('qwen');
+      expect(c.agentType).toBe('qwen');
+      expect(c.binary).toBe('qodercli');
+    });
+    it('returns contract for codex', () => {
+      const c = getContract('codex');
+      expect(c.agentType).toBe('codex');
+      expect(c.binary).toBe('codex');
+    });
+    it('returns contract for gemini', () => {
+      const c = getContract('gemini');
+      expect(c.agentType).toBe('gemini');
+      expect(c.binary).toBe('gemini');
+    });
+    it('returns contract for grok', () => {
+      const c = getContract('grok');
+      expect(c.agentType).toBe('grok');
+      expect(c.binary).toBe('grok');
+      expect(c.supportsPromptMode).toBe(true);
+    });
+    it('throws for unknown agent type', () => {
+      expect(() => getContract('unknown' as any)).toThrow('Unknown agent type');
+    });
+
+    it('blocks codex when external LLM is disabled', async () => {
+      const origSecurity = process.env.OMQ_SECURITY;
+      process.env.OMQ_SECURITY = 'strict';
+      try {
+        const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
+        clearSecurityConfigCache();
+        expect(() => getContract('codex')).toThrow('blocked by security policy');
+      } finally {
+        if (origSecurity === undefined) {
+          delete process.env.OMQ_SECURITY;
+        } else {
+          process.env.OMQ_SECURITY = origSecurity;
+        }
+        const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
+        clearSecurityConfigCache();
+      }
+    });
+
+    it('blocks gemini when external LLM is disabled', async () => {
+      const origSecurity = process.env.OMQ_SECURITY;
+      process.env.OMQ_SECURITY = 'strict';
+      try {
+        const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
+        clearSecurityConfigCache();
+        expect(() => getContract('gemini')).toThrow('blocked by security policy');
+      } finally {
+        if (origSecurity === undefined) {
+          delete process.env.OMQ_SECURITY;
+        } else {
+          process.env.OMQ_SECURITY = origSecurity;
+        }
+        const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
+        clearSecurityConfigCache();
+      }
+    });
+
+    it('blocks grok when external LLM is disabled', async () => {
+      const origSecurity = process.env.OMQ_SECURITY;
+      process.env.OMQ_SECURITY = 'strict';
+      try {
+        const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
+        clearSecurityConfigCache();
+        expect(() => getContract('grok')).toThrow('blocked by security policy');
+      } finally {
+        if (origSecurity === undefined) {
+          delete process.env.OMQ_SECURITY;
+        } else {
+          process.env.OMQ_SECURITY = origSecurity;
+        }
+        const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
+        clearSecurityConfigCache();
+      }
+    });
+
+    it('allows claude even when external LLM is disabled', async () => {
+      const origSecurity = process.env.OMQ_SECURITY;
+      process.env.OMQ_SECURITY = 'strict';
+      try {
+        const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
+        clearSecurityConfigCache();
+        expect(() => getContract('qwen')).not.toThrow();
+      } finally {
+        if (origSecurity === undefined) {
+          delete process.env.OMQ_SECURITY;
+        } else {
+          process.env.OMQ_SECURITY = origSecurity;
+        }
+        const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
+        clearSecurityConfigCache();
+      }
+    });
+  });
+
+  describe('buildLaunchArgs', () => {
+    it('claude includes --dangerously-skip-permissions', () => {
+      const args = buildLaunchArgs('qwen', { teamName: 't', workerName: 'w', cwd: '/tmp' });
+      expect(args).toContain('--dangerously-skip-permissions');
+    });
+    it('detects Claude bare mode only for non-empty DASHSCOPE_API_KEY', () => {
+      expect(shouldUseClaudeBareMode({ DASHSCOPE_API_KEY: 'sk-test' })).toBe(true);
+      expect(shouldUseClaudeBareMode({ DASHSCOPE_API_KEY: '' })).toBe(false);
+      expect(shouldUseClaudeBareMode({ DASHSCOPE_API_KEY: '   ' })).toBe(false);
+      expect(shouldUseClaudeBareMode({})).toBe(false);
+    });
+    it('claude omits --bare when DASHSCOPE_API_KEY is absent, empty, or whitespace', () => {
+      for (const value of [undefined, '', '   ']) {
+        withAnthropicApiKey(value, () => {
+          const args = buildLaunchArgs('qwen', { teamName: 't', workerName: 'w', cwd: '/tmp' });
+          expect(args).toContain('--dangerously-skip-permissions');
+          expect(args).not.toContain('--bare');
+        });
+      }
+    });
+    it('claude includes --bare with API-key auth and dedupes exact extra flag', () => {
+      withAnthropicApiKey('sk-test', () => {
+        const args = buildLaunchArgs('qwen', { teamName: 't', workerName: 'w', cwd: '/tmp' });
+        expect(args).toContain('--dangerously-skip-permissions');
+        expect(args).toContain('--bare');
+        expect(countArg(args, '--bare')).toBe(1);
+
+        const deduped = buildLaunchArgs('qwen', {
+          teamName: 't',
+          workerName: 'w',
+          cwd: '/tmp',
+          extraFlags: ['--bare'],
+        });
+        expect(countArg(deduped, '--bare')).toBe(1);
+      });
+    });
+    it('codex includes --dangerously-bypass-approvals-and-sandbox', () => {
+      const args = buildLaunchArgs('codex', { teamName: 't', workerName: 'w', cwd: '/tmp' });
+      expect(args).not.toContain('exec');
+      expect(args).not.toContain('--full-auto');
+      expect(args).toContain('--dangerously-bypass-approvals-and-sandbox');
+    });
+    it('gemini includes --approval-mode yolo', () => {
+      const args = buildLaunchArgs('gemini', { teamName: 't', workerName: 'w', cwd: '/tmp' });
+      expect(args).toContain('--approval-mode');
+      expect(args).toContain('yolo');
+      expect(args).not.toContain('-p');
+    });
+    it('grok includes --always-approve with no model and appends --model <m> when given', () => {
+      const noModel = buildLaunchArgs('grok', { teamName: 't', workerName: 'w', cwd: '/tmp' });
+      expect(noModel).toEqual(['--always-approve']);
+      expect(noModel).not.toContain('--model');
+
+      const withModel = buildLaunchArgs('grok', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'grok-4-fast' });
+      expect(withModel).toEqual(['--always-approve', '--model', 'grok-4-fast']);
+    });
+    it('passes model flag when specified', () => {
+      const args = buildLaunchArgs('codex', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'gpt-4' });
+      expect(args).toContain('--model');
+      expect(args).toContain('gpt-4');
+    });
+    it('normalizes full Claude model ID to alias for claude agent (issue #1415)', () => {
+      const args = buildLaunchArgs('qwen', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'qwen-plus' });
+      expect(args).toContain('--model');
+      expect(args).toContain('medium');
+      expect(args).not.toContain('qwen-plus');
+    });
+    it('passes Bedrock model ID through without normalization for claude agent (issue #1695)', () => {
+      withAnthropicApiKey('sk-test', () => {
+        const args = buildLaunchArgs('qwen', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'dashscope/qwen-max-v1:0' });
+        expect(args).toContain('--bare');
+        expect(countArg(args, '--bare')).toBe(1);
+        expect(args).toContain('--model');
+        expect(args).toContain('dashscope/qwen-max-v1:0');
+        expect(args).not.toContain('high');
+      });
+    });
+    it('passes Bedrock ARN model ID through without normalization (issue #1695)', () => {
+      const arn = 'dashscope/qwen-plus';
+      const args = buildLaunchArgs('qwen', { teamName: 't', workerName: 'w', cwd: '/tmp', model: arn });
+      expect(args).toContain('--model');
+      expect(args).toContain(arn);
+    });
+    it('passes Vertex AI model ID through without normalization (issue #1695)', () => {
+      const args = buildLaunchArgs('qwen', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'vertex_ai/qwen-plus@20250514' });
+      expect(args).toContain('--model');
+      expect(args).toContain('vertex_ai/qwen-plus@20250514');
+      expect(args).not.toContain('medium');
+    });
+    it('does not normalize non-Claude models for codex/gemini agents', () => {
+      const args = buildLaunchArgs('codex', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'gpt-4o' });
+      expect(args).toContain('gpt-4o');
+    });
+  });
+
+  describe('getWorkerEnv', () => {
+    it('returns correct env vars', () => {
+      const env = getWorkerEnv('my-team', 'worker-1', 'codex');
+      expect(env.OMQ_TEAM_WORKER).toBe('my-team/worker-1');
+      expect(env.OMQ_TEAM_NAME).toBe('my-team');
+      expect(env.OMQ_WORKER_AGENT_TYPE).toBe('codex');
+    });
+
+    it('propagates allowlisted model selection env vars into worker startup env', () => {
+      const env = getWorkerEnv('my-team', 'worker-1', 'qwen', {
+        DASHSCOPE_MODEL: 'claude-opus-4-1',
+        QODER_MODEL: 'qwen-plus',
+        DASHSCOPE_BASE_URL: 'https://example-gateway.invalid',
+        OMQ_ROUTING_FORCE_INHERIT: '1',
+        DASHSCOPE_DEFAULT_MAX_MODEL: 'dashscope/qwen-max-v1:0',
+        DASHSCOPE_DEFAULT_PLUS_MODEL: 'dashscope/qwen-plus-v1:0',
+        DASHSCOPE_DEFAULT_TURBO_MODEL: 'dashscope/qwen-turbo-v1:0',
+        OMQ_MODEL_HIGH: 'qwen-max-override',
+        OMQ_MODEL_MEDIUM: 'qwen-plus-override',
+        OMQ_MODEL_LOW: 'qwen-turbo-override',
+        OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL: 'gpt-5',
+        OMQ_GEMINI_DEFAULT_MODEL: 'gemini-2.5-pro',
+        DASHSCOPE_API_KEY: 'should-not-be-forwarded',
+      });
+
+      expect(env.DASHSCOPE_MODEL).toBe('claude-opus-4-1');
+      expect(env.QODER_MODEL).toBe('qwen-plus');
+      expect(env.DASHSCOPE_BASE_URL).toBe('https://example-gateway.invalid');
+      expect(env.OMQ_ROUTING_FORCE_INHERIT).toBe('1');
+      expect(env.DASHSCOPE_DEFAULT_MAX_MODEL).toBe('dashscope/qwen-max-v1:0');
+      expect(env.DASHSCOPE_DEFAULT_PLUS_MODEL).toBe('dashscope/qwen-plus-v1:0');
+      expect(env.DASHSCOPE_DEFAULT_TURBO_MODEL).toBe('dashscope/qwen-turbo-v1:0');
+      expect(env.OMQ_MODEL_HIGH).toBe('qwen-max-override');
+      expect(env.OMQ_MODEL_MEDIUM).toBe('qwen-plus-override');
+      expect(env.OMQ_MODEL_LOW).toBe('qwen-turbo-override');
+      expect(env.OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL).toBe('gpt-5');
+      expect(env.OMQ_GEMINI_DEFAULT_MODEL).toBe('gemini-2.5-pro');
+      expect(env.DASHSCOPE_API_KEY).toBeUndefined();
+    });
+
+    it('rejects invalid team names', () => {
+      expect(() => getWorkerEnv('Bad-Team', 'worker-1', 'codex')).toThrow('Invalid team name');
+    });
+  });
+
+  describe('buildWorkerArgv', () => {
+    it('builds codex interactive worker argv without the exec subcommand', () => {
+      const mockSpawnSync = vi.mocked(spawnSync);
+      mockSpawnSync.mockReturnValueOnce({ status: 1, stdout: '', stderr: '', pid: 0, output: [], signal: null } as any);
+
+      const argv = buildWorkerArgv('codex', { teamName: 'my-team', workerName: 'worker-1', cwd: '/tmp' });
+      expect(argv).toEqual([
+        'codex',
+        '--dangerously-bypass-approvals-and-sandbox',
+      ]);
+      expect(argv).not.toContain('exec');
+      expect(mockSpawnSync).toHaveBeenCalledWith('which', ['codex'], { timeout: 5000, encoding: 'utf8' });
+      mockSpawnSync.mockRestore();
+    });
+
+    it('builds claude interactive worker argv without the exec subcommand', () => {
+      const mockSpawnSync = vi.mocked(spawnSync);
+      mockSpawnSync.mockReturnValueOnce({ status: 1, stdout: '', stderr: '', pid: 0, output: [], signal: null } as any);
+
+      let argv: string[] = [];
+      withAnthropicApiKey('sk-test', () => {
+        argv = buildWorkerArgv('qwen', { teamName: 'my-team', workerName: 'worker-1', cwd: '/tmp' });
+      });
+
+      expect(argv[0]).toBe('qodercli');
+      expect(argv).toContain('--dangerously-skip-permissions');
+      expect(argv).toContain('--bare');
+      expect(countArg(argv, '--bare')).toBe(1);
+      expect(argv).not.toContain('exec');
+      expect(mockSpawnSync).toHaveBeenCalledWith('which', ['qodercli'], { timeout: 5000, encoding: 'utf8' });
+      mockSpawnSync.mockRestore();
+    });
+
+    it('prefers resolved absolute binary path when available', () => {
+      const mockSpawnSync = vi.mocked(spawnSync);
+      mockSpawnSync.mockReturnValueOnce({ status: 0, stdout: '/usr/local/bin/codex\n', stderr: '', pid: 0, output: [], signal: null } as any);
+
+      expect(buildWorkerArgv('codex', { teamName: 'my-team', workerName: 'worker-1', cwd: '/tmp' })[0]).toBe('/usr/local/bin/codex');
+      mockSpawnSync.mockRestore();
+    });
+  });
+
+  describe('parseCliOutput', () => {
+    it('claude returns trimmed output', () => {
+      expect(parseCliOutput('qwen', '  hello  ')).toBe('hello');
+    });
+    it('codex extracts result from JSONL', () => {
+      const jsonl = JSON.stringify({ type: 'result', output: 'the answer' });
+      expect(parseCliOutput('codex', jsonl)).toBe('the answer');
+    });
+    it('codex falls back to raw output if no JSONL', () => {
+      expect(parseCliOutput('codex', 'plain text')).toBe('plain text');
+    });
+  });
+
+  describe('isCliAvailable', () => {
+    it('checks version without shell:true for standard binaries', () => {
+      const mockSpawnSync = vi.mocked(spawnSync);
+      clearResolvedPathCache();
+      mockSpawnSync
+        .mockReturnValueOnce({ status: 1, stdout: '', stderr: '', pid: 0, output: [], signal: null } as any)
+        .mockReturnValueOnce({ status: 0, stdout: '', stderr: '', pid: 0, output: [], signal: null } as any);
+
+      isCliAvailable('codex');
+
+      expect(mockSpawnSync).toHaveBeenNthCalledWith(1, 'which', ['codex'], { timeout: 5000, encoding: 'utf8' });
+      expect(mockSpawnSync).toHaveBeenNthCalledWith(2, 'codex', ['--version'], { timeout: 5000, shell: false });
+      clearResolvedPathCache();
+      mockSpawnSync.mockRestore();
+    });
+
+    it('uses COMSPEC for .cmd binaries on win32', () => {
+      const mockSpawnSync = vi.mocked(spawnSync);
+      const restorePlatform = setProcessPlatform('win32');
+      vi.stubEnv('COMSPEC', 'C:\\Windows\\System32\\cmd.exe');
+      clearResolvedPathCache();
+
+      mockSpawnSync
+        .mockReturnValueOnce({ status: 0, stdout: 'C:\\Tools\\codex.cmd\n', stderr: '', pid: 0, output: [], signal: null } as any)
+        .mockReturnValueOnce({ status: 0, stdout: '', stderr: '', pid: 0, output: [], signal: null } as any);
+
+      isCliAvailable('codex');
+
+      expect(mockSpawnSync).toHaveBeenNthCalledWith(1, 'where', ['codex'], { timeout: 5000, encoding: 'utf8' });
+      expect(mockSpawnSync).toHaveBeenNthCalledWith(
+        2,
+        'C:\\Windows\\System32\\cmd.exe',
+        ['/d', '/s', '/c', '"C:\\Tools\\codex.cmd" --version'],
+        { timeout: 5000 }
+      );
+      restorePlatform();
+      clearResolvedPathCache();
+      mockSpawnSync.mockRestore();
+      vi.unstubAllEnvs();
+    });
+
+    it('uses shell:true for unresolved binaries on win32', () => {
+      const mockSpawnSync = vi.mocked(spawnSync);
+      const restorePlatform = setProcessPlatform('win32');
+      clearResolvedPathCache();
+
+      mockSpawnSync
+        .mockReturnValueOnce({ status: 1, stdout: '', stderr: '', pid: 0, output: [], signal: null } as any)
+        .mockReturnValueOnce({ status: 0, stdout: '', stderr: '', pid: 0, output: [], signal: null } as any);
+
+      isCliAvailable('gemini');
+
+      expect(mockSpawnSync).toHaveBeenNthCalledWith(1, 'where', ['gemini'], { timeout: 5000, encoding: 'utf8' });
+      expect(mockSpawnSync).toHaveBeenNthCalledWith(2, 'gemini', ['--version'], { timeout: 5000, shell: true });
+      restorePlatform();
+      clearResolvedPathCache();
+      mockSpawnSync.mockRestore();
+    });
+  });
+
+  describe('prompt mode (headless TUI bypass)', () => {
+    it('gemini supports prompt mode', () => {
+      expect(isPromptModeAgent('gemini')).toBe(true);
+      const c = getContract('gemini');
+      expect(c.supportsPromptMode).toBe(true);
+      expect(c.promptModeFlag).toBe('-p');
+    });
+
+    it('claude does not support prompt mode', () => {
+      expect(isPromptModeAgent('qwen')).toBe(false);
+    });
+
+    it('codex launches as a persistent interactive worker, not prompt/exec mode', () => {
+      expect(isPromptModeAgent('codex')).toBe(false);
+      const c = getContract('codex');
+      expect(c.supportsPromptMode).toBe(false);
+      expect(c.promptModeFlag).toBeUndefined();
+    });
+
+    it('grok supports prompt mode', () => {
+      expect(isPromptModeAgent('grok')).toBe(true);
+      const c = getContract('grok');
+      expect(c.supportsPromptMode).toBe(true);
+      expect(c.promptModeFlag).toBe('-p');
+    });
+
+    it('getPromptModeArgs returns flag + instruction for grok', () => {
+      const args = getPromptModeArgs('grok', 'Read inbox');
+      expect(args).toEqual(['-p', 'Read inbox']);
+    });
+
+    it('getPromptModeArgs returns flag + instruction for gemini', () => {
+      const args = getPromptModeArgs('gemini', 'Read inbox');
+      expect(args).toEqual(['-p', 'Read inbox']);
+    });
+
+    it('getPromptModeArgs returns empty array for interactive codex and claude workers', () => {
+      expect(getPromptModeArgs('codex', 'Read inbox')).toEqual([]);
+      expect(getPromptModeArgs('qwen', 'Read inbox')).toEqual([]);
+    });
+  });
+
+  describe('resolveClaudeWorkerModel (issue #1695)', () => {
+    it('returns undefined when OMQ_ROUTING_FORCE_INHERIT=true even if Bedrock model env vars are set', () => {
+      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', 'true');
+      vi.stubEnv('DASHSCOPE_MODEL', 'dashscope/qwen-plus-20250929-v1:0');
+      vi.stubEnv('QODER_MODEL', 'dashscope/qwen-max-v1:0');
+      vi.stubEnv('DASHSCOPE_DEFAULT_PLUS_MODEL', 'dashscope/qwen-plus-v1:0');
+      vi.stubEnv('OMQ_MODEL_MEDIUM', 'dashscope/qwen-plus-20250929-v1:0');
+      expect(resolveClaudeWorkerModel()).toBeUndefined();
+      vi.unstubAllEnvs();
+    });
+
+    it('returns undefined when OMQ_ROUTING_FORCE_INHERIT=true on Vertex', () => {
+      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', 'true');
+      vi.stubEnv('DASHSCOPE_MODEL', 'vertex_ai/qwen-plus@20250514');
+      expect(resolveClaudeWorkerModel()).toBeUndefined();
+      vi.unstubAllEnvs();
+    });
+
+    it('returns undefined when not on Bedrock or Vertex', () => {
+      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', '');
+      vi.stubEnv('DASHSCOPE_MODEL', '');
+      vi.stubEnv('QODER_MODEL', '');
+      expect(resolveClaudeWorkerModel()).toBeUndefined();
+      vi.unstubAllEnvs();
+    });
+
+    it('returns DASHSCOPE_MODEL on Bedrock when set', () => {
+      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', '');
+      vi.stubEnv('DASHSCOPE_MODEL', 'dashscope/qwen-plus-20250929-v1:0');
+      vi.stubEnv('QODER_MODEL', '');
+      expect(resolveClaudeWorkerModel()).toBe('dashscope/qwen-plus-20250929-v1:0');
+      vi.unstubAllEnvs();
+    });
+
+    it('returns QODER_MODEL on Bedrock when DASHSCOPE_MODEL is not set', () => {
+      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', '');
+      vi.stubEnv('DASHSCOPE_MODEL', '');
+      vi.stubEnv('QODER_MODEL', 'dashscope/qwen-max-v1:0');
+      expect(resolveClaudeWorkerModel()).toBe('dashscope/qwen-max-v1:0');
+      vi.unstubAllEnvs();
+    });
+
+    it('falls back to DASHSCOPE_DEFAULT_PLUS_MODEL tier env var', () => {
+      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', '');
+      vi.stubEnv('DASHSCOPE_MODEL', '');
+      vi.stubEnv('QODER_MODEL', '');
+      vi.stubEnv('DASHSCOPE_DEFAULT_PLUS_MODEL', 'dashscope/qwen-plus-v1:0');
+      expect(resolveClaudeWorkerModel()).toBe('dashscope/qwen-plus-v1:0');
+      vi.unstubAllEnvs();
+    });
+
+    it('falls back to OMQ_MODEL_MEDIUM tier env var', () => {
+      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', '');
+      vi.stubEnv('DASHSCOPE_MODEL', '');
+      vi.stubEnv('QODER_MODEL', '');
+      vi.stubEnv('DASHSCOPE_DEFAULT_PLUS_MODEL', '');
+      vi.stubEnv('OMQ_MODEL_MEDIUM', 'dashscope/qwen-plus-20250929-v1:0');
+      expect(resolveClaudeWorkerModel()).toBe('dashscope/qwen-plus-20250929-v1:0');
+      vi.unstubAllEnvs();
+    });
+
+    it('returns DASHSCOPE_MODEL on Vertex when set', () => {
+      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', '');
+      vi.stubEnv('DASHSCOPE_MODEL', 'vertex_ai/qwen-plus@20250514');
+      expect(resolveClaudeWorkerModel()).toBe('vertex_ai/qwen-plus@20250514');
+      vi.unstubAllEnvs();
+    });
+
+    it('returns undefined when no non-default provider indicators are present', () => {
+      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', '');
+      vi.stubEnv('DASHSCOPE_MODEL', '');
+      vi.stubEnv('QODER_MODEL', '');
+      vi.stubEnv('DASHSCOPE_DEFAULT_PLUS_MODEL', '');
+      vi.stubEnv('OMQ_MODEL_MEDIUM', '');
+      expect(resolveClaudeWorkerModel()).toBeUndefined();
+      vi.unstubAllEnvs();
+    });
+
+    it('detects Bedrock from model ID pattern even without OMQ_ROUTING_FORCE_INHERIT', () => {
+      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', '');
+      vi.stubEnv('DASHSCOPE_MODEL', 'dashscope/qwen-plus-20250929-v1:0');
+      vi.stubEnv('QODER_MODEL', '');
+      // isNonDefaultProvider() detects Bedrock from the model ID pattern
+      expect(resolveClaudeWorkerModel()).toBe('dashscope/qwen-plus-20250929-v1:0');
+      vi.unstubAllEnvs();
+    });
+  });
+});

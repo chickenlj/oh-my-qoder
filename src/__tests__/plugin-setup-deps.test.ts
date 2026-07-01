@@ -1,0 +1,415 @@
+import { describe, it, expect } from 'vitest';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const PACKAGE_ROOT = join(__dirname, '..', '..');
+const PLUGIN_SETUP_PATH = join(PACKAGE_ROOT, 'scripts', 'plugin-setup.mjs');
+
+/**
+ * Tests for plugin-setup.mjs dependency installation logic (issue #1113).
+ *
+ * The plugin cache directory does not include node_modules because npm publish
+ * strips it.  plugin-setup.mjs must detect the missing dependencies and run
+ * `npm install --omit=dev --ignore-scripts` to restore them.
+ */
+describe('plugin-setup.mjs dependency installation', () => {
+  it('script file exists', () => {
+    expect(existsSync(PLUGIN_SETUP_PATH)).toBe(true);
+  });
+
+  const scriptContent = existsSync(PLUGIN_SETUP_PATH)
+    ? readFileSync(PLUGIN_SETUP_PATH, 'utf-8')
+    : '';
+
+  it('imports execSync from child_process', () => {
+    expect(scriptContent).toMatch(/import\s*\{[^}]*execSync[^}]*\}\s*from\s*['"]node:child_process['"]/);
+  });
+
+  it('checks for node_modules/commander as dependency sentinel', () => {
+    expect(scriptContent).toContain("node_modules', 'commander'");
+  });
+
+  it('runs npm install with --omit=dev flag', () => {
+    expect(scriptContent).toContain('npm install --omit=dev --ignore-scripts');
+  });
+
+  it('uses --ignore-scripts to prevent recursive setup', () => {
+    // --ignore-scripts must be present to avoid re-triggering plugin-setup.mjs
+    const installMatches = scriptContent.match(/npm install[^'"]+/g) || [];
+    expect(installMatches.length).toBeGreaterThan(0);
+    expect(installMatches.some(m => m.includes('--ignore-scripts'))).toBe(true);
+  });
+
+  it('sets a timeout on execSync to avoid hanging', () => {
+    expect(scriptContent).toMatch(/timeout:\s*\d+/);
+  });
+
+  it('skips install when node_modules/commander already exists', () => {
+    // The script should have a conditional branch that logs "already present"
+    expect(scriptContent).toContain('Runtime dependencies already present');
+  });
+
+  it('wraps install in try/catch for graceful failure', () => {
+    // The install should be wrapped in try/catch so setup continues on failure
+    expect(scriptContent).toContain('Could not install dependencies');
+  });
+});
+
+describe('package.json prepare script removal', () => {
+  const pkgPath = join(PACKAGE_ROOT, 'package.json');
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+
+  it('does not have a prepare script', () => {
+    // prepare was removed to prevent the "prepare trap" where npm install
+    // in the plugin cache directory triggers tsc (which requires devDependencies)
+    expect(pkg.scripts.prepare).toBeUndefined();
+  });
+
+  it('has prepublishOnly with build step', () => {
+    // The build step moved from prepare to prepublishOnly so it only runs
+    // before npm publish, not on npm install in consumer contexts
+    expect(pkg.scripts.prepublishOnly).toContain('npm run build');
+  });
+});
+
+
+describe('plugin-setup.mjs Ralph Ruby dependency guidance (issue #2969)', () => {
+  const scriptContent = existsSync(PLUGIN_SETUP_PATH)
+    ? readFileSync(PLUGIN_SETUP_PATH, 'utf-8')
+    : '';
+
+  it('checks for Ruby during plugin setup before Ralph workflows fail later', () => {
+    expect(scriptContent).toContain('checkRalphRubyDependency');
+    expect(scriptContent).toContain("execFileSync('ruby', ['--version']");
+    expect(scriptContent).toContain('Ruby was not found on PATH');
+  });
+
+  it('prints actionable install guidance for fresh Ubuntu users', () => {
+    expect(scriptContent).toContain('Ralph workflows require Ruby');
+    expect(scriptContent).toContain('sudo apt update && sudo apt install ruby-full');
+    expect(scriptContent).toContain('restart Qoder CLI');
+  });
+});
+
+describe('plugin-setup.mjs hook command portability', () => {
+  // Mirror of the patcher logic from scripts/plugin-setup.mjs (lines 115–177).
+  // Tests behavior, not source shape: a cosmetic reformat of the source
+  // does not break these tests; a real behavior regression does.
+  const scriptContent = existsSync(PLUGIN_SETUP_PATH)
+    ? readFileSync(PLUGIN_SETUP_PATH, 'utf-8')
+    : '';
+  const UNIX_PREFIX =
+    'sh "$QODER_PLUGIN_ROOT"/scripts/find-node.sh "$QODER_PLUGIN_ROOT"/scripts/run.cjs ';
+  const WINDOWS_PREFIX = 'node "$QODER_PLUGIN_ROOT"/scripts/run.cjs ';
+
+  /** Run one command string through the same patching rules as plugin-setup.mjs. */
+  function patchCommand(cmd: string, prefix = UNIX_PREFIX): string {
+    const findNodePattern =
+      /^sh "\$\{QODER_PLUGIN_ROOT\}\/scripts\/find-node\.sh" "\$\{QODER_PLUGIN_ROOT\}\/scripts\/([^"\s]+)"?(.*)$/;
+    const currentFindNodePattern =
+      /^(?:"\/bin\/sh"|sh) "\$QODER_PLUGIN_ROOT"\/scripts\/find-node\.sh "\$QODER_PLUGIN_ROOT"\/scripts\/run\.cjs "\$QODER_PLUGIN_ROOT"\/scripts\/([^"\s]+)"?(.*)$/;
+    const directRunCjsPattern =
+      /^node\s+"\$QODER_PLUGIN_ROOT"\/scripts\/run\.cjs\s+"\$QODER_PLUGIN_ROOT"\/scripts\/([^"\s]+)"?(.*)$/;
+    const absNodePattern =
+      /^"([^"]*\/node|[A-Za-z]:\\[^"]*\\node(?:\.exe)?)"\s+"\$QODER_PLUGIN_ROOT"\/scripts\/run\.cjs\s+"\$QODER_PLUGIN_ROOT"\/scripts\/([^"\s]+)"?(.*)$/;
+
+    const m = cmd.match(currentFindNodePattern) ?? cmd.match(findNodePattern) ?? cmd.match(directRunCjsPattern);
+    if (m) {
+      return `${prefix}"$QODER_PLUGIN_ROOT"/scripts/${m[1]}${m[2]}`;
+    }
+    const absNodeMatch = cmd.match(absNodePattern);
+    if (absNodeMatch) {
+      return `${prefix}"$QODER_PLUGIN_ROOT"/scripts/${absNodeMatch[2]}${absNodeMatch[3]}`;
+    }
+    return cmd;
+  }
+
+  it('selects direct node only on win32 and find-node bootstrap elsewhere', () => {
+    expect(scriptContent).toContain("process.platform === 'win32'");
+    expect(scriptContent).toContain('hookPrefixForPlatform');
+    expect(scriptContent).toContain('normalizeHooksDataForPlatform');
+  });
+
+  it('leaves the canonical sh+find-node+run.cjs command unchanged', () => {
+    const canonical =
+      `${UNIX_PREFIX}"$QODER_PLUGIN_ROOT"/scripts/keyword-detector.mjs`;
+    expect(patchCommand(canonical)).toBe(canonical);
+  });
+
+  it('normalizes legacy sh "${QODER_PLUGIN_ROOT}/..." form to the canonical prefix', () => {
+    const legacy =
+      'sh "${QODER_PLUGIN_ROOT}/scripts/find-node.sh" "${QODER_PLUGIN_ROOT}/scripts/keyword-detector.mjs"';
+    const result = patchCommand(legacy);
+    expect(result).toBe(
+      `${UNIX_PREFIX}"$QODER_PLUGIN_ROOT"/scripts/keyword-detector.mjs`,
+    );
+  });
+
+  it('normalizes bare "node run.cjs" form (node on PATH) to the find-node bootstrap', () => {
+    const bare =
+      'node "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/session-start.mjs';
+    const result = patchCommand(bare);
+    expect(result).toBe(
+      `${UNIX_PREFIX}"$QODER_PLUGIN_ROOT"/scripts/session-start.mjs`,
+    );
+  });
+
+  it('keeps source hook commands portable with sh rather than absolute /bin/sh', () => {
+    const source =
+      `${UNIX_PREFIX}"$QODER_PLUGIN_ROOT"/scripts/keyword-detector.mjs`;
+
+    expect(source).not.toContain('/bin/sh');
+    expect(patchCommand(source)).toBe(source);
+  });
+
+  it('self-heals an absolute node path baked in at publish time', () => {
+    const absolute =
+      '"/opt/hostedtoolcache/node/20.0.0/x64/bin/node" "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/keyword-detector.mjs';
+    const result = patchCommand(absolute);
+    expect(result).toBe(
+      `${UNIX_PREFIX}"$QODER_PLUGIN_ROOT"/scripts/keyword-detector.mjs`,
+    );
+  });
+
+  it('keeps generated SessionEnd hooks native-Windows safe without sh', () => {
+    const sessionEnd =
+      'node "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/session-end.mjs';
+    const wikiSessionEnd =
+      'node "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/wiki-session-end.mjs';
+
+    expect(patchCommand(sessionEnd, WINDOWS_PREFIX)).toBe(sessionEnd);
+    expect(patchCommand(wikiSessionEnd, WINDOWS_PREFIX)).toBe(wikiSessionEnd);
+    expect(sessionEnd).not.toContain('sh ');
+    expect(wikiSessionEnd).not.toContain('sh ');
+  });
+
+  it('normalizes every bundled sh/find-node hook command to direct node on Windows', () => {
+    const hooksJson = JSON.parse(readFileSync(join(PACKAGE_ROOT, 'hooks', 'hooks.json'), 'utf-8')) as {
+      hooks: Record<string, Array<{ hooks: Array<{ command?: string }> }>>;
+    };
+    const commands = Object.entries(hooksJson.hooks).flatMap(([event, groups]) =>
+      groups.flatMap(group =>
+        group.hooks
+          .map(hook => hook.command)
+          .filter((command): command is string => typeof command === 'string')
+          .map(command => ({ event, command })),
+      ),
+    );
+
+    expect(commands.length).toBeGreaterThan(0);
+    for (const { event, command } of commands) {
+      const patched = patchCommand(command, WINDOWS_PREFIX);
+      expect(patched, event).toMatch(/^node "\$QODER_PLUGIN_ROOT"\/scripts\/run\.cjs /);
+      expect(patched, event).not.toContain('find-node.sh');
+      expect(patched, event).not.toContain('/bin/sh');
+      expect(patched, event).not.toMatch(/^sh /);
+    }
+  });
+
+  it('repairs every bundled direct-node hook command to find-node on Unix/macOS', () => {
+    const hooksJson = JSON.parse(readFileSync(join(PACKAGE_ROOT, 'hooks', 'hooks.json'), 'utf-8')) as {
+      hooks: Record<string, Array<{ hooks: Array<{ command?: string }> }>>;
+    };
+    const commands = Object.entries(hooksJson.hooks).flatMap(([event, groups]) =>
+      groups.flatMap(group =>
+        group.hooks
+          .map(hook => hook.command)
+          .filter((command): command is string => typeof command === 'string')
+          .map(command => ({ event, command })),
+      ),
+    );
+
+    expect(commands.length).toBeGreaterThan(0);
+    for (const { event, command } of commands) {
+      const patched = patchCommand(command, UNIX_PREFIX);
+      expect(patched, event).toMatch(/^sh "\$QODER_PLUGIN_ROOT"\/scripts\/find-node\.sh "\$QODER_PLUGIN_ROOT"\/scripts\/run\.cjs /);
+      expect(patched, event).toContain('"$QODER_PLUGIN_ROOT"/scripts/');
+      expect(patched, event).not.toContain('/bin/sh');
+    }
+  });
+
+  it('does not rewrite the source hooks manifest when run from a repository checkout', () => {
+    const hooksJsonPath = join(PACKAGE_ROOT, 'hooks', 'hooks.json');
+    const before = readFileSync(hooksJsonPath, 'utf-8');
+    const tempRoot = mkdtempSync(join(tmpdir(), 'omq-plugin-setup-source-hooks-'));
+
+    try {
+      const configDir = join(tempRoot, 'qwen');
+      const fakeHome = join(tempRoot, 'home');
+      mkdirSync(configDir, { recursive: true });
+      mkdirSync(fakeHome, { recursive: true });
+
+      execFileSync(process.execPath, [PLUGIN_SETUP_PATH], {
+        cwd: PACKAGE_ROOT,
+        env: {
+          ...process.env,
+          QODER_CONFIG_DIR: configDir,
+          HOME: fakeHome,
+        },
+        stdio: 'pipe',
+      });
+
+      expect(readFileSync(hooksJsonPath, 'utf-8')).toBe(before);
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('normalizes current sh find-node commands to node run.cjs on Windows', () => {
+    const current =
+      'sh "$QODER_PLUGIN_ROOT"/scripts/find-node.sh "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/session-end.mjs';
+
+    expect(patchCommand(current, WINDOWS_PREFIX)).toBe(
+      'node "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/session-end.mjs',
+    );
+  });
+
+  it.runIf(process.platform !== 'win32')('executes a Unix hook command with minimal PATH by resolving Volta-managed node', () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), 'omq-min-path-hook-'));
+    try {
+      const tempHome = join(tempRoot, 'home');
+      const tempBin = join(tempRoot, 'bin');
+      const voltaBin = join(tempHome, '.volta', 'bin');
+      mkdirSync(tempBin, { recursive: true });
+      mkdirSync(voltaBin, { recursive: true });
+      mkdirSync(join(tempHome, '.qwen'), { recursive: true });
+
+      symlinkSync('/bin/sh', join(tempBin, 'sh'));
+
+      const argsFile = join(tempRoot, 'node-args.txt');
+      const fakeNode = join(voltaBin, 'node');
+      writeFileSync(
+        fakeNode,
+        '#!/bin/sh\nprintf "%s\\n" "$@" > "$OMQ_FAKE_NODE_ARGS"\n',
+      );
+      chmodSync(fakeNode, 0o755);
+
+      const command = `${UNIX_PREFIX}"$QODER_PLUGIN_ROOT"/scripts/keyword-detector.mjs --smoke`;
+
+      execFileSync('/bin/sh', ['-c', command], {
+        env: {
+          HOME: tempHome,
+          PATH: tempBin,
+          QODER_PLUGIN_ROOT: PACKAGE_ROOT,
+          OMQ_FAKE_NODE_ARGS: argsFile,
+        },
+        stdio: 'pipe',
+      });
+
+      const args = readFileSync(argsFile, 'utf-8').trim().split('\n');
+      expect(args[0]).toBe(join(PACKAGE_ROOT, 'scripts', 'run.cjs'));
+      expect(args[1]).toBe(join(PACKAGE_ROOT, 'scripts', 'keyword-detector.mjs'));
+      expect(args[2]).toBe('--smoke');
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it.runIf(process.platform !== 'win32')('prefers concrete nvm node over a stale executable shim on PATH', () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), 'omq-min-path-nvm-'));
+    try {
+      const tempHome = join(tempRoot, 'home');
+      const tempBin = join(tempRoot, 'bin');
+      const asdfBin = join(tempHome, '.asdf', 'shims');
+      const nvmBin = join(tempHome, '.nvm', 'versions', 'node', 'v22.14.0', 'bin');
+      mkdirSync(tempBin, { recursive: true });
+      mkdirSync(asdfBin, { recursive: true });
+      mkdirSync(nvmBin, { recursive: true });
+      mkdirSync(join(tempHome, '.qwen'), { recursive: true });
+
+      symlinkSync('/bin/sh', join(tempBin, 'sh'));
+
+      writeFileSync(join(asdfBin, 'node'), '#!/bin/sh\nexit 127\n');
+      chmodSync(join(asdfBin, 'node'), 0o755);
+
+      const argsFile = join(tempRoot, 'node-args.txt');
+      const fakeNode = join(nvmBin, 'node');
+      writeFileSync(
+        fakeNode,
+        '#!/bin/sh\nprintf "%s\\n" "$@" > "$OMQ_FAKE_NODE_ARGS"\n',
+      );
+      chmodSync(fakeNode, 0o755);
+
+      const command = `${UNIX_PREFIX}"$QODER_PLUGIN_ROOT"/scripts/session-end.mjs`;
+      execFileSync('/bin/sh', ['-c', command], {
+        env: {
+          HOME: tempHome,
+          PATH: `${tempBin}:${asdfBin}`,
+          QODER_PLUGIN_ROOT: PACKAGE_ROOT,
+          OMQ_FAKE_NODE_ARGS: argsFile,
+        },
+        stdio: 'pipe',
+      });
+
+      const args = readFileSync(argsFile, 'utf-8').trim().split('\n');
+      expect(args[0]).toBe(join(PACKAGE_ROOT, 'scripts', 'run.cjs'));
+      expect(args[1]).toBe(join(PACKAGE_ROOT, 'scripts', 'session-end.mjs'));
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it.runIf(process.platform !== 'win32')('prefers concrete nvm node over a stale stored nodeBinary shim', () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), 'omq-stored-shim-'));
+    try {
+      const tempHome = join(tempRoot, 'home');
+      const tempBin = join(tempRoot, 'bin');
+      const asdfBin = join(tempHome, '.asdf', 'shims');
+      const nvmBin = join(tempHome, '.nvm', 'versions', 'node', 'v22.14.0', 'bin');
+      const claudeDir = join(tempHome, '.qwen');
+      mkdirSync(tempBin, { recursive: true });
+      mkdirSync(asdfBin, { recursive: true });
+      mkdirSync(nvmBin, { recursive: true });
+      mkdirSync(claudeDir, { recursive: true });
+
+      symlinkSync('/bin/sh', join(tempBin, 'sh'));
+
+      const staleShim = join(asdfBin, 'node');
+      writeFileSync(staleShim, '#!/bin/sh\nexit 127\n');
+      chmodSync(staleShim, 0o755);
+      writeFileSync(join(claudeDir, '.omq-config.json'), JSON.stringify({ nodeBinary: staleShim }));
+
+      const argsFile = join(tempRoot, 'node-args.txt');
+      const fakeNode = join(nvmBin, 'node');
+      writeFileSync(
+        fakeNode,
+        '#!/bin/sh\nprintf "%s\\n" "$@" > "$OMQ_FAKE_NODE_ARGS"\n',
+      );
+      chmodSync(fakeNode, 0o755);
+
+      const command = `${UNIX_PREFIX}"$QODER_PLUGIN_ROOT"/scripts/session-end.mjs`;
+      execFileSync('/bin/sh', ['-c', command], {
+        env: {
+          HOME: tempHome,
+          PATH: tempBin,
+          QODER_PLUGIN_ROOT: PACKAGE_ROOT,
+          OMQ_FAKE_NODE_ARGS: argsFile,
+        },
+        stdio: 'pipe',
+      });
+
+      const args = readFileSync(argsFile, 'utf-8').trim().split('\n');
+      expect(args[0]).toBe(join(PACKAGE_ROOT, 'scripts', 'run.cjs'));
+      expect(args[1]).toBe(join(PACKAGE_ROOT, 'scripts', 'session-end.mjs'));
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps the Windows hook command direct-node and shell-wrapper free', () => {
+    const command = patchCommand(
+      `${UNIX_PREFIX}"$QODER_PLUGIN_ROOT"/scripts/session-end.mjs`,
+      WINDOWS_PREFIX,
+    );
+
+    expect(command).toBe('node "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/session-end.mjs');
+    expect(command).not.toContain('find-node.sh');
+    expect(command).not.toMatch(/(?:^|\s)sh(?:\s|$)/);
+    expect(command).not.toContain('/bin/sh');
+  });
+});

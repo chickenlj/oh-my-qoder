@@ -1,0 +1,31 @@
+{
+  "$schema": "https://anthropic.com/qoder-cli/marketplace.schema.json",
+  "name": "omq",
+  "description": "Qoder CLI native multi-agent orchestration - intelligent model routing, 28 agents, 32 skills",
+  "owner": {
+    "name": "Yeachan Heo",
+    "email": "hurrc04@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "oh-my-qoder",
+      "description": "Qoder CLI native multi-agent orchestration with intelligent model routing, 28 agent variants, and 32 powerful skills. Zero learning curve. Maximum power.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Yeachan Heo",
+        "email": "hurrc04@gmail.com"
+      },
+      "source": "./",
+      "category": "productivity",
+      "homepage": "https://github.com/Yeachan-Heo/oh-my-qoder",
+      "tags": [
+        "multi-agent",
+        "orchestration",
+        "delegation",
+        "todo-management",
+        "ultrawork"
+      ]
+    }
+  ],
+  "version": "0.1.0"
+}

@@ -1,0 +1,1524 @@
+#!/usr/bin/env node
+
+/**
+ * OMQ Persistent Mode Hook (Node.js)
+ * Minimal continuation enforcer for all OMQ modes.
+ * Stripped down for reliability — no optional imports, no PRD, no notepad pruning.
+ *
+ * Supported modes: ralph, ultragoal, autopilot, ultrapilot, swarm, ultrawork, ultraqa, pipeline, team
+ */
+
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+  mkdirSync,
+  unlinkSync,
+  renameSync,
+  statSync,
+  openSync,
+  readSync,
+  closeSync,
+} from "fs";
+import { spawn } from "child_process";
+import { join, dirname, resolve, normalize } from "path";
+import { homedir } from "os";
+import { fileURLToPath, pathToFileURL } from "url";
+import { getQoderConfigDir } from "./lib/config-dir.mjs";
+import { resolveOmqStateRoot } from "./lib/state-root.mjs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Dynamic import for the shared stdin module
+const { readStdin } = await import(
+  pathToFileURL(join(__dirname, "lib", "stdin.mjs")).href
+);
+
+function readJsonFile(path) {
+  try {
+    if (!existsSync(path)) return null;
+    return JSON.parse(readFileSync(path, "utf-8"));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get hard max iterations from OMQ_SECURITY / config file.
+ * Returns 0 if unlimited (default).
+ */
+function getHardMaxIterations() {
+  // OMQ_SECURITY=strict → default hard max 200
+  if (process.env.OMQ_SECURITY === "strict") {
+    // Check config file for override
+    const configOverride = readSecurityConfigValue("hardMaxIterations");
+    return typeof configOverride === "number" ? configOverride : 200;
+  }
+  // Check config file only
+  const configValue = readSecurityConfigValue("hardMaxIterations");
+  return typeof configValue === "number" ? configValue : 0;
+}
+
+/**
+ * Read a single value from the security section of omq config files.
+ */
+function readSecurityConfigValue(key) {
+  const paths = [
+    join(process.cwd(), ".claude", "omq.jsonc"),
+    join(homedir(), ".config", "qoder-omq", "config.jsonc"),
+  ];
+  for (const p of paths) {
+    try {
+      if (!existsSync(p)) continue;
+      const raw = readFileSync(p, "utf-8");
+      // Strip JSONC comments (// and /* */)
+      const json = raw.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+      const parsed = JSON.parse(json);
+      if (parsed?.security && parsed.security[key] !== undefined) {
+        return parsed.security[key];
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return undefined;
+}
+
+function writeJsonFile(path, data) {
+  try {
+    // Ensure directory exists
+    const dir = dirname(path);
+    if (dir && dir !== "." && !existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+    const tmp = `${path}.${process.pid}.${Date.now()}.tmp`;
+    writeFileSync(tmp, JSON.stringify(data, null, 2));
+    renameSync(tmp, path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getIdleCooldownSeconds() {
+  const configPath = join(homedir(), ".omq", "config.json");
+  const config = readJsonFile(configPath);
+  const val = config?.notificationCooldown?.sessionIdleSeconds;
+  return typeof val === "number" ? val : 60;
+}
+
+function shouldSendIdleNotification(stateDir) {
+  const cooldownSecs = getIdleCooldownSeconds();
+  const cooldownPath = join(stateDir, "idle-notif-cooldown.json");
+  const data = readJsonFile(cooldownPath);
+
+  if (cooldownSecs === 0) return true;
+
+  if (data?.lastSentAt) {
+    const elapsed = (Date.now() - new Date(data.lastSentAt).getTime()) / 1000;
+    if (Number.isFinite(elapsed) && elapsed < cooldownSecs) return false;
+  }
+  return true;
+}
+
+function recordIdleNotificationSent(stateDir) {
+  const cooldownPath = join(stateDir, "idle-notif-cooldown.json");
+  writeJsonFile(cooldownPath, { lastSentAt: new Date().toISOString() });
+}
+
+function dispatchIdleNotificationInBackground(sessionId, directory) {
+  if (process.env.OMQ_NOTIFY === "0") return false;
+
+  const pluginRoot = process.env.QODER_PLUGIN_ROOT;
+  if (!pluginRoot) return false;
+
+  const notificationsModuleUrl = pathToFileURL(join(pluginRoot, "dist", "notifications", "index.js")).href;
+  const payload = {
+    sessionId,
+    projectPath: directory,
+    profileName: process.env.OMQ_NOTIFY_PROFILE,
+  };
+  const childSource = `import(${JSON.stringify(notificationsModuleUrl)})\n` +
+    `  .then(({ notify }) => notify("session-idle", ${JSON.stringify(payload)}))\n` +
+    `  .catch(() => {});`;
+
+  try {
+    const child = spawn(process.execPath, ["--input-type=module", "-e", childSource], {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+      env: {
+        ...process.env,
+        OMQ_HOOK_BACKGROUND_CHILD: "1",
+      },
+    });
+    child.unref();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Read last tool error from state directory.
+ * Returns null if file doesn't exist or error is stale (>60 seconds old).
+ */
+function readLastToolError(stateDir) {
+  const errorPath = join(stateDir, "last-tool-error.json");
+  const toolError = readJsonFile(errorPath);
+
+  if (!toolError || !toolError.timestamp) return null;
+
+  // Check staleness - errors older than 60 seconds are ignored
+  const parsedTime = new Date(toolError.timestamp).getTime();
+  if (!Number.isFinite(parsedTime)) {
+    return null; // Invalid timestamp = stale
+  }
+  const age = Date.now() - parsedTime;
+  if (age > 60000) return null;
+
+  return toolError;
+}
+
+/**
+ * Clear tool error state file atomically.
+ */
+function clearToolErrorState(stateDir) {
+  const errorPath = join(stateDir, "last-tool-error.json");
+  try {
+    if (existsSync(errorPath)) {
+      unlinkSync(errorPath);
+    }
+  } catch {
+    // Ignore errors - file may have been removed already
+  }
+}
+
+/**
+ * Generate retry guidance message for tool errors.
+ * After 5+ retries, suggests alternative approaches.
+ */
+function getToolErrorRetryGuidance(toolError) {
+  if (!toolError) return "";
+
+  const retryCount = toolError.retry_count || 1;
+  const toolName = toolError.tool_name || "unknown";
+  const error = toolError.error || "Unknown error";
+
+  if (retryCount >= 5) {
+    return `[TOOL ERROR - ALTERNATIVE APPROACH NEEDED]
+The "${toolName}" operation has failed ${retryCount} times.
+
+STOP RETRYING THE SAME APPROACH. Instead:
+1. Try a completely different command or approach
+2. Check if the environment/dependencies are correct
+3. Consider breaking down the task differently
+4. If stuck, ask the user for guidance
+
+`;
+  }
+
+  return `[TOOL ERROR - RETRY REQUIRED]
+The previous "${toolName}" operation failed.
+
+Error: ${error}
+
+REQUIRED ACTIONS:
+1. Analyze why the command failed
+2. Fix the issue (wrong path? permission? syntax? missing dependency?)
+3. RETRY the operation with corrected parameters
+4. Continue with your original task after success
+
+Do NOT skip this step. Do NOT move on without fixing the error.
+
+`;
+}
+
+/**
+ * Staleness threshold for mode states (2 hours in milliseconds).
+ * States older than this are treated as inactive to prevent stale state
+ * from causing the stop hook to malfunction in new sessions.
+ */
+const STALE_STATE_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
+const PENDING_ASYNC_STATE_STALE_MS = 24 * 60 * 60 * 1000;
+const CANCEL_SIGNAL_TTL_MS = 30_000;
+const TEAM_TERMINAL_PHASES = new Set([
+  "completed",
+  "complete",
+  "failed",
+  "cancelled",
+  "canceled",
+  "aborted",
+  "terminated",
+  "done",
+]);
+const ULTRAGOAL_TERMINAL_PHASES = new Set([
+  "complete",
+  "completed",
+  "done",
+  "all-done",
+  "all_done",
+  "failed",
+  "cancelled",
+  "canceled",
+  "aborted",
+]);
+const TEAM_ACTIVE_PHASES = new Set([
+  "team-plan",
+  "team-prd",
+  "team-exec",
+  "team-verify",
+  "team-fix",
+  "planning",
+  "executing",
+  "verify",
+  "verification",
+  "fix",
+  "fixing",
+]);
+
+/**
+ * Check if a state is stale based on its timestamps.
+ * A state is considered stale if it hasn't been updated recently.
+ * We check `last_checked_at`, `updated_at`, and `started_at` - using whichever is more recent.
+ */
+function isStaleState(state) {
+  if (!state) return true;
+
+  const timestamps = [state.last_checked_at, state.updated_at, state.started_at].filter(
+    (value) => typeof value === "string" && value.length > 0,
+  );
+  const mostRecent = timestamps.reduce((max, value) => {
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) && parsed > max ? parsed : max;
+  }, 0);
+
+  if (mostRecent === 0) return true; // No valid timestamps
+
+  const age = Date.now() - mostRecent;
+  return age > STALE_STATE_THRESHOLD_MS;
+}
+
+
+function parseTimestamp(value) {
+  if (typeof value !== "string" || value.length === 0) return null;
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isFreshTimestamp(value, ttlMs = PENDING_ASYNC_STATE_STALE_MS) {
+  const parsed = parseTimestamp(value);
+  return parsed !== null && Date.now() - parsed <= ttlMs;
+}
+
+function hasPendingBackgroundTask(stateDir, sessionId) {
+  const safeSessionId = sanitizeSessionId(sessionId);
+  const hudPath = safeSessionId
+    ? join(stateDir, "sessions", safeSessionId, "hud-state.json")
+    : join(stateDir, "hud-state.json");
+  const hudState = readJsonFile(hudPath);
+  return Boolean(hudState?.backgroundTasks?.some((task) => {
+    if (task?.status !== "running") return false;
+    return isFreshTimestamp(task.startedAt ?? task.startTime);
+  }));
+}
+
+function readPendingWakeupStates(stateDir, sessionId) {
+  const safeSessionId = sanitizeSessionId(sessionId);
+  const dirs = safeSessionId ? [join(stateDir, "sessions", safeSessionId), stateDir] : [stateDir];
+  const fileNames = ["scheduled-wakeup-state.json", "schedule-wakeup-state.json", "wakeup-state.json"];
+  const states = [];
+  for (const dir of dirs) {
+    for (const fileName of fileNames) {
+      const state = readJsonFile(join(dir, fileName));
+      if (state && typeof state === "object") states.push(state);
+    }
+  }
+  return states;
+}
+
+function hasPendingScheduledWakeup(stateDir, sessionId) {
+  const now = Date.now();
+  return readPendingWakeupStates(stateDir, sessionId).some((state) => {
+    const status = typeof state.status === "string" ? state.status.toLowerCase() : "";
+    if (["completed", "complete", "cancelled", "canceled", "failed", "expired"].includes(status)) {
+      return false;
+    }
+    const dueAt = parseTimestamp(
+      state.due_at ?? state.wakeup_at ?? state.scheduled_for ?? state.deadline_at ?? state.expires_at,
+    );
+    if (dueAt !== null) return dueAt > now;
+    if (state.active === true || state.pending === true) {
+      return isFreshTimestamp(state.created_at ?? state.updated_at ?? state.started_at);
+    }
+    return false;
+  });
+}
+
+function hasPendingOwnedAsyncWork(stateDir, sessionId) {
+  return hasPendingBackgroundTask(stateDir, sessionId) || hasPendingScheduledWakeup(stateDir, sessionId);
+}
+
+function normalizeTeamPhase(state) {
+  if (!state || typeof state !== "object") return null;
+
+  const rawPhase = state.current_phase ?? state.phase ?? state.stage;
+  if (typeof rawPhase !== "string") return null;
+
+  const phase = rawPhase.trim().toLowerCase();
+  if (!phase || TEAM_TERMINAL_PHASES.has(phase)) return null;
+  return TEAM_ACTIVE_PHASES.has(phase) ? phase : null;
+}
+
+function getSafeReinforcementCount(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? Math.floor(value)
+    : 0;
+}
+
+const AWAITING_CONFIRMATION_TTL_MS = 2 * 60 * 1000;
+
+function isAwaitingConfirmation(state) {
+  if (!state || state.awaiting_confirmation !== true) {
+    return false;
+  }
+
+  const setAt =
+    state.awaiting_confirmation_set_at ||
+    state.started_at ||
+    null;
+
+  if (!setAt) {
+    return false;
+  }
+
+  const setAtMs = new Date(setAt).getTime();
+  if (!Number.isFinite(setAtMs)) {
+    return false;
+  }
+
+  return Date.now() - setAtMs < AWAITING_CONFIRMATION_TTL_MS;
+}
+
+function getAutopilotPhase(state) {
+  const rawPhase = state?.phase ?? state?.current_phase ?? "unspecified";
+  return typeof rawPhase === "string" && rawPhase.trim()
+    ? rawPhase.trim().toLowerCase()
+    : "unspecified";
+}
+
+function isAutopilotRoutingEchoPrompt(promptText) {
+  return /^\[MAGIC KEYWORDS?(?: DETECTED)?:\s*AUTOPILOT\s*\]\s*$/i.test(promptText) ||
+    /^\/(?:oh-my-qoder:|omq:)?autopilot(?:\s+execute)?\s*$/i.test(promptText);
+}
+
+function isOrphanedAutopilotRoutingEchoState(state) {
+  if (!state || typeof state !== "object") return false;
+
+  const phase = getAutopilotPhase(state);
+  if (phase && phase !== "unspecified") return false;
+
+  const promptText = [
+    state.originalIdea,
+    state.original_idea,
+    state.original_prompt,
+    state.prompt,
+    state.task_description,
+  ]
+    .filter((value) => typeof value === "string")
+    .join("\n")
+    .trim();
+
+  return isAutopilotRoutingEchoPrompt(promptText);
+}
+
+function clearLoadedStateFile(loaded) {
+  const statePath = loaded?.path;
+  if (!statePath || !existsSync(statePath)) return;
+
+  try {
+    unlinkSync(statePath);
+  } catch {
+    // Best effort: failing to clean an orphan should not re-arm stop blocking.
+  }
+}
+
+/**
+ * Normalize a path for comparison.
+ */
+function normalizePath(p) {
+  if (!p) return "";
+  let normalized = resolve(p);
+  normalized = normalize(normalized);
+  normalized = normalized.replace(/[\/\\]+$/, "");
+  if (process.platform === "win32") {
+    normalized = normalized.toLowerCase();
+  }
+  return normalized;
+}
+
+/**
+ * Check if a state belongs to the current project.
+ */
+function isStateForCurrentProject(
+  state,
+  currentDirectory,
+  isGlobalState = false,
+) {
+  if (!state) return true;
+
+  if (!state.project_path) {
+    if (isGlobalState) {
+      return false;
+    }
+    return true;
+  }
+
+  return normalizePath(state.project_path) === normalizePath(currentDirectory);
+}
+
+/**
+ * Read state file from local or global location, tracking the source.
+ * Returns { state, path, isGlobal } to track where the state was loaded from.
+ */
+function readStateFile(stateDir, globalStateDir, filename) {
+  const localPath = join(stateDir, filename);
+  const globalPath = join(globalStateDir, filename);
+
+  let state = readJsonFile(localPath);
+  if (state) return { state, path: localPath, isGlobal: false };
+
+  state = readJsonFile(globalPath);
+  if (state) return { state, path: globalPath, isGlobal: true };
+
+  return { state: null, path: localPath, isGlobal: false }; // Default to local for new writes
+}
+
+const SESSION_ID_ALLOWLIST = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$/;
+
+function sanitizeSessionId(sessionId) {
+  if (!sessionId || typeof sessionId !== "string") return "";
+  return SESSION_ID_ALLOWLIST.test(sessionId) ? sessionId : "";
+}
+
+/**
+ * Read state file with session-scoped path support.
+ * If sessionId is provided, prefers the session-scoped path, then scans other
+ * session directories and legacy state for matching ownership.
+ */
+function readStateFileWithSession(stateDir, globalStateDir, filename, sessionId) {
+  const safeSessionId = sanitizeSessionId(sessionId);
+  if (safeSessionId) {
+    const sessionsDir = join(stateDir, "sessions", safeSessionId);
+    const sessionPath = join(sessionsDir, filename);
+    const state = readJsonFile(sessionPath);
+    if (state) {
+      return { state, path: sessionPath, isGlobal: false };
+    }
+
+    try {
+      const allSessionsDir = join(stateDir, "sessions");
+      if (existsSync(allSessionsDir)) {
+        const dirs = readdirSync(allSessionsDir).filter((dir) => SESSION_ID_ALLOWLIST.test(dir));
+        for (const dir of dirs) {
+          const candidatePath = join(allSessionsDir, dir, filename);
+          const candidateState = readJsonFile(candidatePath);
+          if (candidateState && candidateState.session_id === safeSessionId) {
+            return { state: candidateState, path: candidatePath, isGlobal: false };
+          }
+        }
+      }
+    } catch {
+      // ignore scan failures
+    }
+
+    const legacyResult = readStateFile(stateDir, globalStateDir, filename);
+    if (legacyResult.state && legacyResult.state.session_id === safeSessionId) {
+      return legacyResult;
+    }
+
+    return { state: null, path: sessionPath, isGlobal: false };
+  }
+
+  return readStateFile(stateDir, globalStateDir, filename);
+}
+
+const WORKFLOW_SLOT_TOMBSTONE_TTL_MS = 24 * 60 * 60 * 1000;
+
+function isWorkflowSlotTombstonedForMode(stateDir, mode, sessionId) {
+  const safeSessionId = sanitizeSessionId(sessionId);
+  const ledgerPath = safeSessionId
+    ? join(stateDir, "sessions", safeSessionId, "skill-active-state.json")
+    : join(stateDir, "skill-active-state.json");
+  const ledger = readJsonFile(ledgerPath);
+  const slot = ledger?.active_skills?.[mode];
+  if (!slot || typeof slot !== "object") return false;
+  if (typeof slot.completed_at !== "string" || !slot.completed_at) return false;
+  const completedAt = new Date(slot.completed_at).getTime();
+  if (!Number.isFinite(completedAt)) return true;
+  return Date.now() - completedAt < WORKFLOW_SLOT_TOMBSTONE_TTL_MS;
+}
+
+function isAuthoritativeModeActive(stateDir, mode, loaded, sessionId) {
+  const state = loaded?.state;
+  if (!state?.active) return false;
+  if (isWorkflowSlotTombstonedForMode(stateDir, mode, sessionId)) return false;
+  const safeSessionId = sanitizeSessionId(sessionId);
+  if (safeSessionId && state.session_id && state.session_id !== safeSessionId) return false;
+  return true;
+}
+
+function normalizePhaseValue(value) {
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim().toLowerCase()
+    : "";
+}
+
+function isUltragoalTerminalState(state, omqRoot) {
+  if (!state || typeof state !== "object") return false;
+  if (state.active === false) return true;
+  if (typeof state.completed_at === "string" && state.completed_at.length > 0) return true;
+  if (state.all_done === true || state.done === true) return true;
+
+  const phase = normalizePhaseValue(state.current_phase ?? state.phase ?? state.status);
+  if (phase && ULTRAGOAL_TERMINAL_PHASES.has(phase)) return true;
+
+  const plan = readJsonFile(join(omqRoot, "ultragoal", "goals.json"));
+  if (!plan || typeof plan !== "object") return false;
+  if (plan.aggregateCompletion?.status === "complete") return true;
+  if (!Array.isArray(plan.goals) || plan.goals.length === 0) return false;
+  return plan.goals.every((goal) => {
+    const status = normalizePhaseValue(goal?.status);
+    return status === "complete" || status === "review_blocked";
+  });
+}
+
+function getUltragoalObjective(state, omqRoot) {
+  const candidates = [
+    state?.claude_goal_objective,
+    state?.claudeGoalObjective,
+    state?.codex_objective,
+    state?.codexObjective,
+    state?.goal_objective,
+    state?.goalObjective,
+    state?.objective,
+    state?.prompt,
+    state?.original_prompt,
+  ];
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  const plan = readJsonFile(join(omqRoot, "ultragoal", "goals.json"));
+  if (typeof plan?.claudeObjective === "string" && plan.claudeObjective.trim()) return plan.claudeObjective.trim();
+  if (typeof plan?.aggregateCompletion?.objective === "string" && plan.aggregateCompletion.objective.trim()) {
+    return plan.aggregateCompletion.objective.trim();
+  }
+  const activeGoal = Array.isArray(plan?.goals) ? plan.goals.find((goal) => goal?.status === "in_progress") : null;
+  if (typeof activeGoal?.objective === "string" && activeGoal.objective.trim()) return activeGoal.objective.trim();
+  return "";
+}
+
+function isSessionCancelInProgress(stateDir, sessionId) {
+  const isActiveSignal = (signalPath) => {
+    const signal = readJsonFile(signalPath);
+    if (!signal) {
+      return false;
+    }
+
+    const now = Date.now();
+    const expiresAt = signal.expires_at ? new Date(signal.expires_at).getTime() : NaN;
+    const requestedAt = signal.requested_at ? new Date(signal.requested_at).getTime() : NaN;
+    const fallbackExpiry = Number.isFinite(requestedAt) ? requestedAt + CANCEL_SIGNAL_TTL_MS : NaN;
+    const effectiveExpiry = Number.isFinite(expiresAt) ? expiresAt : fallbackExpiry;
+
+    if (Number.isFinite(effectiveExpiry) && effectiveExpiry > now) {
+      return true;
+    }
+
+    if (existsSync(signalPath)) {
+      try {
+        unlinkSync(signalPath);
+      } catch {
+        // best effort cleanup
+      }
+    }
+    return false;
+  };
+
+  if (sessionId) {
+    const sessionSignalPath = join(stateDir, "sessions", sessionId, "cancel-signal-state.json");
+    if (isActiveSignal(sessionSignalPath)) {
+      return true;
+    }
+  }
+
+  return isActiveSignal(join(stateDir, "cancel-signal-state.json"));
+}
+
+function shouldWriteStateBack(path) {
+  return Boolean(path && existsSync(path));
+}
+
+function isValidSessionId(sessionId) {
+  return typeof sessionId === "string" && SESSION_ID_ALLOWLIST.test(sessionId);
+}
+
+/**
+ * Count incomplete Tasks from Qoder CLI's native Task system.
+ */
+function countIncompleteTasks(sessionId) {
+  if (!sessionId || typeof sessionId !== "string") return 0;
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$/.test(sessionId)) return 0;
+
+  const cfgDir = getQoderConfigDir();
+  const taskDir = join(cfgDir, "tasks", sessionId);
+  if (!existsSync(taskDir)) return 0;
+
+  let count = 0;
+  try {
+    const files = readdirSync(taskDir).filter(
+      (f) => f.endsWith(".json") && f !== ".lock",
+    );
+    for (const file of files) {
+      try {
+        const content = readFileSync(join(taskDir, file), "utf-8");
+        const task = JSON.parse(content);
+        if (task.status === "pending" || task.status === "in_progress") count++;
+      } catch {
+        /* skip */
+      }
+    }
+  } catch {
+    /* skip */
+  }
+  return count;
+}
+
+async function countIncompleteTodos(sessionId, projectDir) {
+  let count = 0;
+
+  // Session-specific todos only (no global scan)
+  if (
+    sessionId &&
+    typeof sessionId === "string" &&
+    /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$/.test(sessionId)
+  ) {
+    const sessionTodoPath = join(
+      getQoderConfigDir(),
+      "todos",
+      `${sessionId}.json`,
+    );
+    try {
+      const data = readJsonFile(sessionTodoPath);
+      const todos = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.todos)
+          ? data.todos
+          : [];
+      count += todos.filter(
+        (t) => t.status !== "completed" && t.status !== "cancelled",
+      ).length;
+    } catch {
+      /* skip */
+    }
+  }
+
+  // Project-local todos only
+  const omqRoot = await resolveOmqStateRoot(projectDir);
+  for (const path of [
+    join(omqRoot, "todos.json"),
+    join(projectDir, ".claude", "todos.json"),
+  ]) {
+    try {
+      const data = readJsonFile(path);
+      const todos = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.todos)
+          ? data.todos
+          : [];
+      count += todos.filter(
+        (t) => t.status !== "completed" && t.status !== "cancelled",
+      ).length;
+    } catch {
+      /* skip */
+    }
+  }
+
+  return count;
+}
+
+
+const ULTRAWORK_OBJECTIVE_MAX_CHARS = 140;
+
+function firstStringValue(source, keys) {
+  if (!source || typeof source !== "object") return "";
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
+}
+
+function formatConciseObjective(value, maxChars = ULTRAWORK_OBJECTIVE_MAX_CHARS) {
+  if (typeof value !== "string") return "";
+  const compact = value.replace(/\s+/g, " ").trim();
+  if (!compact) return "";
+  const chars = [...compact];
+  if (chars.length <= maxChars) return compact;
+  return `${chars.slice(0, maxChars).join("").trimEnd()}…`;
+}
+
+function getLiveUltraworkObjective(state) {
+  const objective = firstStringValue(state, [
+    "current_objective",
+    "currentObjective",
+    "objective_summary",
+    "objectiveSummary",
+    "task_summary",
+    "taskSummary",
+    "current_task",
+    "currentTask",
+    "active_task",
+    "activeTask",
+  ]);
+  return formatConciseObjective(objective);
+}
+
+/**
+ * Detect if stop was triggered by context-limit related reasons.
+ * When context is exhausted, Qoder CLI needs to stop so it can compact.
+ * Blocking these stops causes a deadlock: can't compact because can't stop,
+ * can't continue because context is full.
+ *
+ * See: https://github.com/Yeachan-Heo/oh-my-qoder/issues/213
+ */
+function isContextLimitStop(data) {
+  const reasons = [
+    data.stop_reason,
+    data.stopReason,
+    data.end_turn_reason,
+    data.endTurnReason,
+    data.reason,
+  ]
+    .filter((value) => typeof value === "string" && value.trim().length > 0)
+    .map((value) => value.toLowerCase().replace(/[\s-]+/g, "_"));
+
+  const contextPatterns = [
+    "context_limit",
+    "context_window",
+    "context_exceeded",
+    "context_full",
+    "max_context",
+    "token_limit",
+    "max_tokens",
+    "conversation_too_long",
+    "input_too_long",
+  ];
+
+  return reasons.some((reason) => contextPatterns.some((p) => reason.includes(p)));
+}
+
+const CRITICAL_CONTEXT_STOP_PERCENT = 95;
+
+function estimateContextPercent(transcriptPath) {
+  if (!transcriptPath || !existsSync(transcriptPath)) return 0;
+  let fd = -1;
+  try {
+    const size = statSync(transcriptPath).size;
+    if (size === 0) return 0;
+
+    // Read only the last 4KB to avoid OOM on large transcripts (10-100MB)
+    const readSize = Math.min(4096, size);
+    const buf = Buffer.alloc(readSize);
+    fd = openSync(transcriptPath, "r");
+    readSync(fd, buf, 0, readSize, size - readSize);
+    closeSync(fd);
+    fd = -1;
+
+    const content = buf.toString("utf-8");
+    const windowMatch = content.match(/"context_window"\s{0,5}:\s{0,5}(\d+)/g);
+    const inputMatch = content.match(/"input_tokens"\s{0,5}:\s{0,5}(\d+)/g);
+    if (!windowMatch || !inputMatch) return 0;
+
+    const lastWindow = parseInt(windowMatch[windowMatch.length - 1].match(/(\d+)/)[1], 10);
+    const lastInput = parseInt(inputMatch[inputMatch.length - 1].match(/(\d+)/)[1], 10);
+    if (!Number.isFinite(lastWindow) || lastWindow <= 0 || !Number.isFinite(lastInput)) return 0;
+    return Math.round((lastInput / lastWindow) * 100);
+  } catch {
+    if (fd !== -1) try { closeSync(fd); } catch { /* best-effort */ }
+    return 0;
+  }
+}
+
+/**
+ * Detect if stop was triggered by user abort (Ctrl+C, cancel button, etc.)
+ */
+function isUserAbort(data) {
+  if (data.user_requested || data.userRequested) return true;
+
+  const reason = (data.stop_reason || data.stopReason || "").toLowerCase();
+  // Exact-match patterns: short generic words that cause false positives with .includes()
+  const exactPatterns = ["aborted", "abort", "cancel", "interrupt"];
+  // Substring patterns: compound words safe for .includes() matching
+  const substringPatterns = [
+    "user_cancel",
+    "user_interrupt",
+    "ctrl_c",
+    "manual_stop",
+  ];
+
+  return (
+    exactPatterns.some((p) => reason === p) ||
+    substringPatterns.some((p) => reason.includes(p))
+  );
+}
+
+const AUTHENTICATION_ERROR_PATTERNS = [
+  "authentication_error",
+  "authentication_failed",
+  "auth_error",
+  "unauthorized",
+  "unauthorised",
+  "401",
+  "403",
+  "forbidden",
+  "invalid_token",
+  "token_invalid",
+  "token_expired",
+  "expired_token",
+  "oauth_expired",
+  "oauth_token_expired",
+  "invalid_grant",
+  "insufficient_scope",
+];
+
+function isAuthenticationError(data) {
+  const reason = (data.stop_reason || data.stopReason || "").toLowerCase();
+  const endTurnReason = (
+    data.end_turn_reason ||
+    data.endTurnReason ||
+    ""
+  ).toLowerCase();
+
+  return AUTHENTICATION_ERROR_PATTERNS.some(
+    (pattern) => reason.includes(pattern) || endTurnReason.includes(pattern),
+  );
+}
+
+function isScheduledWakeupStop(data) {
+  const stopPatterns = [
+    "schedulewakeup",
+    "schedule_wakeup",
+    "scheduled_wakeup",
+    "scheduled_task",
+    "scheduled_resume",
+    "loop_resume",
+    "loop_wakeup",
+  ];
+
+  const toolName = String(data.tool_name || data.toolName || "").toLowerCase().replace(/[\s-]+/g, "_");
+  if (stopPatterns.some((pattern) => toolName.includes(pattern))) {
+    return true;
+  }
+
+  const reasons = [
+    data.stop_reason,
+    data.stopReason,
+    data.end_turn_reason,
+    data.endTurnReason,
+    data.reason,
+  ]
+    .filter((value) => typeof value === "string" && value.trim().length > 0)
+    .map((value) => value.toLowerCase().replace(/[\s-]+/g, "_"));
+
+  return reasons.some((reason) => stopPatterns.some((pattern) => reason.includes(pattern)));
+}
+
+async function main() {
+  try {
+    const input = await readStdin();
+    let data = {};
+    try {
+      data = JSON.parse(input);
+    } catch {}
+
+    // Qoder CLI sets stop_hook_active when a Stop hook is already running.
+    // Never emit another decision:block in that re-entrant path: doing so trips
+    // Qoder CLI's safety override for repeatedly blocked Stop hooks.
+    if (data.stop_hook_active === true) {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+
+    const directory = data.cwd || data.directory || process.cwd();
+    const sessionIdRaw = data.sessionId || data.session_id || data.sessionid || "";
+    const sessionId = sanitizeSessionId(sessionIdRaw);
+    const hasValidSessionId = isValidSessionId(sessionIdRaw);
+    const omqRoot = await resolveOmqStateRoot(directory);
+    const stateDir = join(omqRoot, "state");
+    const globalStateDir = join(homedir(), ".omq", "state");
+
+    // CRITICAL: Never block context-limit stops.
+    // Blocking these causes a deadlock where Qoder CLI cannot compact.
+    // See: https://github.com/Yeachan-Heo/oh-my-qoder/issues/213
+    if (isContextLimitStop(data)) {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+
+    const criticalTranscriptPath = data.transcript_path || data.transcriptPath || "";
+    if (estimateContextPercent(criticalTranscriptPath) >= CRITICAL_CONTEXT_STOP_PERCENT) {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+
+    // Respect user abort (Ctrl+C, cancel)
+    if (isUserAbort(data)) {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+
+    // Never block auth failures (401/403/expired OAuth): allow re-auth flow.
+    if (isAuthenticationError(data)) {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+
+    if (isScheduledWakeupStop(data)) {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+
+    if (hasPendingOwnedAsyncWork(stateDir, sessionId)) {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+
+    // Read all mode states (session-scoped when sessionId provided)
+    const ralph = readStateFileWithSession(
+      stateDir,
+      globalStateDir,
+      "ralph-state.json",
+      sessionId,
+    );
+    const ultragoal = readStateFileWithSession(
+      stateDir,
+      globalStateDir,
+      "ultragoal-state.json",
+      sessionId,
+    );
+    const autopilot = readStateFileWithSession(
+      stateDir,
+      globalStateDir,
+      "autopilot-state.json",
+      sessionId,
+    );
+    const ultrapilot = readStateFileWithSession(
+      stateDir,
+      globalStateDir,
+      "ultrapilot-state.json",
+      sessionId,
+    );
+    const ultrawork = readStateFileWithSession(
+      stateDir,
+      globalStateDir,
+      "ultrawork-state.json",
+      sessionId,
+    );
+    const ultraqa = readStateFileWithSession(
+      stateDir,
+      globalStateDir,
+      "ultraqa-state.json",
+      sessionId,
+    );
+    const pipeline = readStateFileWithSession(
+      stateDir,
+      globalStateDir,
+      "pipeline-state.json",
+      sessionId,
+    );
+    const team = readStateFileWithSession(
+      stateDir,
+      globalStateDir,
+      "team-state.json",
+      sessionId,
+    );
+    const omqTeams = readStateFileWithSession(
+      stateDir,
+      globalStateDir,
+      "omq-teams-state.json",
+      sessionId,
+    );
+
+    if (isSessionCancelInProgress(stateDir, sessionId)) {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+
+    // Swarm uses swarm-summary.json (not swarm-state.json) + marker file
+    const swarmMarker = existsSync(join(stateDir, "swarm-active.marker"));
+    const swarmSummary = readJsonFile(join(stateDir, "swarm-summary.json"));
+
+    // Count incomplete items (session-specific + project-local only)
+    const taskCount = countIncompleteTasks(sessionId);
+    const todoCount = await countIncompleteTodos(sessionId, directory);
+    const totalIncomplete = taskCount + todoCount;
+
+    // Priority 1: Ralph Loop (explicit persistence mode)
+    // Skip if state is stale (older than 2 hours) - prevents blocking new sessions
+    if (
+      isAuthoritativeModeActive(stateDir, "ralph", ralph, sessionId) && !isAwaitingConfirmation(ralph.state) &&
+      !isStaleState(ralph.state) &&
+      isStateForCurrentProject(ralph.state, directory, ralph.isGlobal)
+    ) {
+      const sessionMatches = hasValidSessionId
+        ? ralph.state.session_id === sessionId
+        : !ralph.state.session_id || ralph.state.session_id === sessionId;
+      if (sessionMatches) {
+        const iteration = ralph.state.iteration || 1;
+        const maxIter = ralph.state.max_iterations || 100;
+
+        if (iteration < maxIter) {
+          const toolError = readLastToolError(stateDir);
+          const errorGuidance = getToolErrorRetryGuidance(toolError);
+
+          ralph.state.iteration = iteration + 1;
+          ralph.state.last_checked_at = new Date().toISOString();
+          if (!shouldWriteStateBack(ralph.path)) {
+            console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+            return;
+          }
+          writeJsonFile(ralph.path, ralph.state);
+
+          let reason = `[RALPH LOOP - ITERATION ${iteration + 1}/${maxIter}] Work is NOT done. Continue working.\nWhen FULLY complete (after Architect verification), run /oh-my-qoder:cancel to cleanly exit ralph mode and clean up all state files. If cancel fails, retry with /oh-my-qoder:cancel --force.\n${ralph.state.prompt ? `Task: ${ralph.state.prompt}` : ""}`;
+          if (errorGuidance) {
+            reason = errorGuidance + reason;
+          }
+
+          console.log(
+            JSON.stringify({
+              decision: "block",
+              reason,
+            }),
+          );
+          return;
+        }
+
+        // Check hard max before extending
+        const hardMax = getHardMaxIterations();
+        if (hardMax > 0 && maxIter >= hardMax) {
+          ralph.state.active = false;
+          ralph.state.last_checked_at = new Date().toISOString();
+          if (!shouldWriteStateBack(ralph.path)) {
+            console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+            return;
+          }
+          writeJsonFile(ralph.path, ralph.state);
+
+          console.log(
+            JSON.stringify({
+              decision: "block",
+              reason: `[RALPH LOOP - HARD LIMIT] Reached hard max iterations (${hardMax}). Mode auto-disabled. Restart with /oh-my-qoder:ralph if needed.`,
+            }),
+          );
+          return;
+        }
+
+        // Extend and keep going.
+        ralph.state.max_iterations = maxIter + 10;
+        ralph.state.last_checked_at = new Date().toISOString();
+        if (!shouldWriteStateBack(ralph.path)) {
+          console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+          return;
+        }
+        writeJsonFile(ralph.path, ralph.state);
+
+        const ralphExtendedReason = `[RALPH LOOP - EXTENDED] Max iterations reached; extending to ${ralph.state.max_iterations} and continuing. When FULLY complete (after Architect verification), run /oh-my-qoder:cancel (or --force).`;
+        console.log(
+          JSON.stringify({
+            decision: "block",
+            reason: ralphExtendedReason,
+          }),
+        );
+        return;
+      }
+    }
+
+    // Priority 1.5: Ultragoal durable goal execution
+    if (
+      isAuthoritativeModeActive(stateDir, "ultragoal", ultragoal, sessionId) && !isAwaitingConfirmation(ultragoal.state) &&
+      !isStaleState(ultragoal.state) &&
+      isStateForCurrentProject(ultragoal.state, directory, ultragoal.isGlobal)
+    ) {
+      const sessionMatches = hasValidSessionId
+        ? ultragoal.state.session_id === sessionId
+        : !ultragoal.state.session_id || ultragoal.state.session_id === sessionId;
+      if (sessionMatches && !isUltragoalTerminalState(ultragoal.state, omqRoot)) {
+        const newCount = (ultragoal.state.reinforcement_count || 0) + 1;
+        const maxReinforcements = ultragoal.state.max_reinforcements || 50;
+
+        if (newCount > maxReinforcements) {
+          console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+          return;
+        }
+
+        const toolError = readLastToolError(stateDir);
+        const errorGuidance = getToolErrorRetryGuidance(toolError);
+
+        ultragoal.state.reinforcement_count = newCount;
+        ultragoal.state.last_checked_at = new Date().toISOString();
+        if (!shouldWriteStateBack(ultragoal.path)) {
+          console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+          return;
+        }
+        writeJsonFile(ultragoal.path, ultragoal.state);
+
+        let reason = `[ULTRAGOAL #${newCount}/${maxReinforcements}] Ultragoal mode is active. Continue the durable goal workflow, keep the matching Claude /goal active, and checkpoint .omq/ultragoal/ledger.jsonl before stopping. When all ultragoal stories are complete and the final quality gate passes, run /oh-my-qoder:cancel to cleanly exit.`;
+        const objective = getUltragoalObjective(ultragoal.state, omqRoot);
+        if (objective) reason += `\nClaude /goal objective: ${objective}`;
+        if (errorGuidance) {
+          reason = errorGuidance + reason;
+        }
+
+        console.log(JSON.stringify({ decision: "block", reason }));
+        return;
+      }
+    }
+
+    // Priority 2: Autopilot (high-level orchestration)
+    if (isOrphanedAutopilotRoutingEchoState(autopilot.state)) {
+      clearLoadedStateFile(autopilot);
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+
+    if (
+      autopilot.state?.active && !isAwaitingConfirmation(autopilot.state) &&
+      !isStaleState(autopilot.state) &&
+      isStateForCurrentProject(autopilot.state, directory, autopilot.isGlobal)
+    ) {
+      const sessionMatches = hasValidSessionId
+        ? autopilot.state.session_id === sessionId
+        : !autopilot.state.session_id || autopilot.state.session_id === sessionId;
+      if (sessionMatches) {
+        const phase = getAutopilotPhase(autopilot.state);
+        if (phase !== "complete") {
+          const newCount = (autopilot.state.reinforcement_count || 0) + 1;
+          if (newCount <= 20) {
+            const toolError = readLastToolError(stateDir);
+            const errorGuidance = getToolErrorRetryGuidance(toolError);
+
+            autopilot.state.reinforcement_count = newCount;
+            autopilot.state.last_checked_at = new Date().toISOString();
+            writeJsonFile(autopilot.path, autopilot.state);
+
+            const cancelGuidance = hasValidSessionId && autopilot.state.session_id === sessionId
+              ? " When all phases are complete, run /oh-my-qoder:cancel to cleanly exit and clean up this session's autopilot state files. If cancel fails, retry with /oh-my-qoder:cancel --force."
+              : "";
+            let reason = `[AUTOPILOT - Phase: ${phase}] Autopilot not complete. Continue working.${cancelGuidance}`;
+            if (errorGuidance) {
+              reason = errorGuidance + reason;
+            }
+
+            console.log(
+              JSON.stringify({
+                decision: "block",
+                reason,
+              }),
+            );
+            return;
+          }
+        }
+      }
+    }
+
+    // Priority 3: Ultrapilot (parallel autopilot)
+    if (
+      ultrapilot.state?.active &&
+      !isStaleState(ultrapilot.state) &&
+      (hasValidSessionId
+        ? ultrapilot.state.session_id === sessionId
+        : !ultrapilot.state.session_id || ultrapilot.state.session_id === sessionId) &&
+      isStateForCurrentProject(ultrapilot.state, directory, ultrapilot.isGlobal)
+    ) {
+      const workers = ultrapilot.state.workers || [];
+      const incomplete = workers.filter(
+        (w) => w.status !== "complete" && w.status !== "failed",
+      ).length;
+      if (incomplete > 0) {
+        const newCount = (ultrapilot.state.reinforcement_count || 0) + 1;
+        if (newCount <= 20) {
+          const toolError = readLastToolError(stateDir);
+          const errorGuidance = getToolErrorRetryGuidance(toolError);
+
+          ultrapilot.state.reinforcement_count = newCount;
+          ultrapilot.state.last_checked_at = new Date().toISOString();
+          writeJsonFile(ultrapilot.path, ultrapilot.state);
+
+          let reason = `[ULTRAPILOT] ${incomplete} workers still running. Continue working. When all workers complete, run /oh-my-qoder:cancel to cleanly exit and clean up state files. If cancel fails, retry with /oh-my-qoder:cancel --force.`;
+          if (errorGuidance) {
+            reason = errorGuidance + reason;
+          }
+
+          console.log(
+            JSON.stringify({
+              decision: "block",
+              reason,
+            }),
+          );
+          return;
+        }
+      }
+    }
+
+    // Priority 4: Swarm (coordinated agents with SQLite)
+    if (
+      swarmMarker &&
+      swarmSummary?.active &&
+      !isStaleState(swarmSummary) &&
+      isStateForCurrentProject(swarmSummary, directory, false)
+    ) {
+      const pending =
+        (swarmSummary.tasks_pending || 0) + (swarmSummary.tasks_claimed || 0);
+      if (pending > 0) {
+        const newCount = (swarmSummary.reinforcement_count || 0) + 1;
+        if (newCount <= 15) {
+          const toolError = readLastToolError(stateDir);
+          const errorGuidance = getToolErrorRetryGuidance(toolError);
+
+          swarmSummary.reinforcement_count = newCount;
+          swarmSummary.last_checked_at = new Date().toISOString();
+          writeJsonFile(join(stateDir, "swarm-summary.json"), swarmSummary);
+
+          let reason = `[SWARM ACTIVE] ${pending} tasks remain. Continue working. When all tasks are done, run /oh-my-qoder:cancel to cleanly exit and clean up state files. If cancel fails, retry with /oh-my-qoder:cancel --force.`;
+          if (errorGuidance) {
+            reason = errorGuidance + reason;
+          }
+
+          console.log(
+            JSON.stringify({
+              decision: "block",
+              reason,
+            }),
+          );
+          return;
+        }
+      }
+    }
+
+    // Priority 5: Pipeline (sequential stages)
+    if (
+      pipeline.state?.active &&
+      !isStaleState(pipeline.state) &&
+      (hasValidSessionId
+        ? pipeline.state.session_id === sessionId
+        : !pipeline.state.session_id || pipeline.state.session_id === sessionId) &&
+      isStateForCurrentProject(pipeline.state, directory, pipeline.isGlobal)
+    ) {
+      const currentStage = pipeline.state.current_stage || 0;
+      const totalStages = pipeline.state.stages?.length || 0;
+      if (currentStage < totalStages) {
+        const newCount = (pipeline.state.reinforcement_count || 0) + 1;
+        if (newCount <= 15) {
+          const toolError = readLastToolError(stateDir);
+          const errorGuidance = getToolErrorRetryGuidance(toolError);
+
+          pipeline.state.reinforcement_count = newCount;
+          pipeline.state.last_checked_at = new Date().toISOString();
+          writeJsonFile(pipeline.path, pipeline.state);
+
+          let reason = `[PIPELINE - Stage ${currentStage + 1}/${totalStages}] Pipeline not complete. Continue working. When all stages complete, run /oh-my-qoder:cancel to cleanly exit and clean up state files. If cancel fails, retry with /oh-my-qoder:cancel --force.`;
+          if (errorGuidance) {
+            reason = errorGuidance + reason;
+          }
+
+          console.log(
+            JSON.stringify({
+              decision: "block",
+              reason,
+            }),
+          );
+          return;
+        }
+      }
+    }
+
+    // Priority 6: Team (native Qoder CLI teams / staged pipeline)
+    if (
+      team.state?.active &&
+      !isStaleState(team.state) &&
+      isStateForCurrentProject(team.state, directory, team.isGlobal)
+    ) {
+      const sessionMatches = hasValidSessionId
+        ? team.state.session_id === sessionId
+        : !team.state.session_id || team.state.session_id === sessionId;
+      if (sessionMatches) {
+        const phase = normalizeTeamPhase(team.state);
+        if (phase) {
+          const newCount = getSafeReinforcementCount(team.state.reinforcement_count) + 1;
+          if (newCount <= 20) {
+            const toolError = readLastToolError(stateDir);
+            const errorGuidance = getToolErrorRetryGuidance(toolError);
+
+            team.state.reinforcement_count = newCount;
+            team.state.last_checked_at = new Date().toISOString();
+            writeJsonFile(team.path, team.state);
+
+            let reason = `[TEAM - Phase: ${phase}] Team mode active. Continue working. When all team tasks complete, run /oh-my-qoder:cancel to cleanly exit. If cancel fails, retry with /oh-my-qoder:cancel --force.`;
+            if (errorGuidance) {
+              reason = errorGuidance + reason;
+            }
+
+            console.log(
+              JSON.stringify({
+                decision: "block",
+                reason,
+              }),
+            );
+            return;
+          }
+        }
+      }
+    }
+
+    // Priority 6.5: OMQ Teams (tmux CLI workers — independent of native team state)
+    if (
+      omqTeams.state?.active &&
+      !isStaleState(omqTeams.state) &&
+      isStateForCurrentProject(omqTeams.state, directory, omqTeams.isGlobal)
+    ) {
+      const sessionMatches = hasValidSessionId
+        ? omqTeams.state.session_id === sessionId
+        : !omqTeams.state.session_id || omqTeams.state.session_id === sessionId;
+      if (sessionMatches) {
+        const phase = normalizeTeamPhase(omqTeams.state);
+        if (phase) {
+          const newCount = getSafeReinforcementCount(omqTeams.state.reinforcement_count) + 1;
+          if (newCount <= 20) {
+            const toolError = readLastToolError(stateDir);
+            const errorGuidance = getToolErrorRetryGuidance(toolError);
+
+            omqTeams.state.reinforcement_count = newCount;
+            omqTeams.state.last_checked_at = new Date().toISOString();
+            writeJsonFile(omqTeams.path, omqTeams.state);
+
+            let reason = `[OMQ TEAMS - Phase: ${phase}] OMQ Teams workers active. Continue working. When all workers complete, run /oh-my-qoder:cancel to cleanly exit. If cancel fails, retry with /oh-my-qoder:cancel --force.`;
+            if (errorGuidance) {
+              reason = errorGuidance + reason;
+            }
+
+            console.log(JSON.stringify({ decision: "block", reason }));
+            return;
+          }
+        }
+      }
+    }
+
+    // Priority 7: UltraQA (QA cycling)
+    if (
+      ultraqa.state?.active &&
+      !isStaleState(ultraqa.state) &&
+      (hasValidSessionId
+        ? ultraqa.state.session_id === sessionId
+        : !ultraqa.state.session_id || ultraqa.state.session_id === sessionId) &&
+      isStateForCurrentProject(ultraqa.state, directory, ultraqa.isGlobal)
+    ) {
+      const cycle = ultraqa.state.cycle || 1;
+      const maxCycles = ultraqa.state.max_cycles || 10;
+      if (cycle < maxCycles && !ultraqa.state.all_passing) {
+        const toolError = readLastToolError(stateDir);
+        const errorGuidance = getToolErrorRetryGuidance(toolError);
+
+        ultraqa.state.cycle = cycle + 1;
+        ultraqa.state.last_checked_at = new Date().toISOString();
+        writeJsonFile(ultraqa.path, ultraqa.state);
+
+        let reason = `[ULTRAQA - Cycle ${cycle + 1}/${maxCycles}] Tests not all passing. Continue fixing. When all tests pass, run /oh-my-qoder:cancel to cleanly exit and clean up state files. If cancel fails, retry with /oh-my-qoder:cancel --force.`;
+        if (errorGuidance) {
+          reason = errorGuidance + reason;
+        }
+
+        console.log(
+          JSON.stringify({
+            decision: "block",
+            reason,
+          }),
+        );
+        return;
+      }
+    }
+
+    // Priority 8: Ultrawork - ALWAYS continue while active (not just when tasks exist)
+    // This prevents false stops from bash errors, transient failures, etc.
+    // Session isolation: only block if state belongs to this session (issue #311)
+    // If state has session_id, it must match. If no session_id (legacy), allow.
+    // Project isolation: only block if state belongs to this project
+    if (
+      isAuthoritativeModeActive(stateDir, "ultrawork", ultrawork, sessionId) && !isAwaitingConfirmation(ultrawork.state) &&
+      !isStaleState(ultrawork.state) &&
+      (hasValidSessionId
+        ? ultrawork.state.session_id === sessionId
+        : !ultrawork.state.session_id || ultrawork.state.session_id === sessionId) &&
+      isStateForCurrentProject(ultrawork.state, directory, ultrawork.isGlobal)
+    ) {
+      const newCount = (ultrawork.state.reinforcement_count || 0) + 1;
+      const maxReinforcements = ultrawork.state.max_reinforcements || 50;
+
+      if (newCount > maxReinforcements) {
+        // Max reinforcements reached - allow stop
+        console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+        return;
+      }
+
+      const toolError = readLastToolError(stateDir);
+      const errorGuidance = getToolErrorRetryGuidance(toolError);
+
+      ultrawork.state.reinforcement_count = newCount;
+      ultrawork.state.last_checked_at = new Date().toISOString();
+      writeJsonFile(ultrawork.path, ultrawork.state);
+
+      let reason = `[ULTRAWORK #${newCount}/${maxReinforcements}] Mode active.`;
+
+      if (totalIncomplete > 0) {
+        const itemType = taskCount > 0 ? "Tasks" : "todos";
+        reason += ` ${totalIncomplete} incomplete ${itemType} remain. Continue working. When all work is complete, run /oh-my-qoder:cancel to cleanly exit ultrawork mode and clean up state files.`;
+      } else if (newCount >= 3) {
+        // Reinforce clean-exit guidance once no tracked work remains.
+        reason += ` If all work is complete, run /oh-my-qoder:cancel to cleanly exit ultrawork mode and clean up state files. If cancel fails, retry with /oh-my-qoder:cancel --force. Otherwise, continue working.`;
+      } else {
+        // Early iterations with no tasks yet still need an immediately visible exit path.
+        reason += ` No incomplete tasks detected. If all work is complete, run /oh-my-qoder:cancel to cleanly exit ultrawork mode and clean up state files. Otherwise, continue working - create Tasks to track your progress.`;
+      }
+
+      const currentObjective = getLiveUltraworkObjective(ultrawork.state);
+      if (currentObjective) {
+        reason += `\nCurrent objective: ${currentObjective}`;
+      }
+
+      if (errorGuidance) {
+        reason = errorGuidance + reason;
+      }
+
+      console.log(JSON.stringify({ decision: "block", reason }));
+      return;
+    }
+
+    // No blocking needed
+    if (sessionId && shouldSendIdleNotification(stateDir)) {
+      if (dispatchIdleNotificationInBackground(sessionId, directory)) {
+        recordIdleNotificationSent(stateDir);
+      }
+    }
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+  } catch (error) {
+    // On any error, allow stop rather than blocking forever
+    console.error(`[persistent-mode] Error: ${error.message}`);
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+  }
+}
+
+main();

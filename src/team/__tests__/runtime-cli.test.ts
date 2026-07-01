@@ -1,0 +1,445 @@
+import { describe, it, expect } from 'vitest';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import {
+  assertAutoMergeRuntimeSupported,
+  buildCliOutput,
+  buildTerminalCliResult,
+  checkWatchdogFailedMarker,
+  getTerminalStatus,
+  isTerseFinalSummary,
+  readTaskOutputFallback,
+  writeResultArtifact,
+} from '../runtime-cli.js';
+
+describe('runtime-cli auto-merge compatibility', () => {
+  it('rejects explicit auto-merge when runtime v2 is disabled', () => {
+    expect(() => assertAutoMergeRuntimeSupported(false, true)).toThrow(/requires runtime v2/);
+  });
+
+  it('allows v1 runtime when auto-merge is not requested', () => {
+    expect(() => assertAutoMergeRuntimeSupported(false, false)).not.toThrow();
+  });
+});
+
+describe('runtime-cli terminal status helper', () => {
+  it('returns null when there is still active work', () => {
+    expect(
+      getTerminalStatus({ pending: 1, inProgress: 0, completed: 0, failed: 0 }, 1),
+    ).toBeNull();
+  });
+
+  it('returns null when terminal counts do not match expected task count', () => {
+    expect(
+      getTerminalStatus({ pending: 0, inProgress: 0, completed: 1, failed: 0 }, 2),
+    ).toBeNull();
+  });
+
+  it('returns failed for terminal snapshots with any failed task', () => {
+    expect(
+      getTerminalStatus({ pending: 0, inProgress: 0, completed: 1, failed: 1 }, 2),
+    ).toBe('failed');
+  });
+
+  it('returns completed for terminal snapshots with zero failed tasks', () => {
+    expect(
+      getTerminalStatus({ pending: 0, inProgress: 0, completed: 2, failed: 0 }, 2),
+    ).toBe('completed');
+  });
+});
+
+describe('runtime-cli watchdog marker helper', () => {
+  it('continues when marker file does not exist', async () => {
+    const stateRoot = mkdtempSync(join(tmpdir(), 'runtime-cli-watchdog-none-'));
+    try {
+      const result = await checkWatchdogFailedMarker(stateRoot, Date.now());
+      expect(result.failed).toBe(false);
+    } finally {
+      rmSync(stateRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('fails fast when marker timestamp is current/fresh', async () => {
+    const stateRoot = mkdtempSync(join(tmpdir(), 'runtime-cli-watchdog-fresh-'));
+    try {
+      const startTime = Date.now();
+      writeFileSync(
+        join(stateRoot, 'watchdog-failed.json'),
+        JSON.stringify({ failedAt: startTime + 1_000 }),
+        'utf-8',
+      );
+
+      const result = await checkWatchdogFailedMarker(stateRoot, startTime);
+      expect(result.failed).toBe(true);
+      expect(result.reason).toContain('Watchdog marked team failed');
+    } finally {
+      rmSync(stateRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('treats stale marker as non-fatal and unlinks it best-effort', async () => {
+    const stateRoot = mkdtempSync(join(tmpdir(), 'runtime-cli-watchdog-stale-'));
+    const markerPath = join(stateRoot, 'watchdog-failed.json');
+    try {
+      const startTime = Date.now();
+      writeFileSync(
+        markerPath,
+        JSON.stringify({ failedAt: new Date(startTime - 10_000).toISOString() }),
+        'utf-8',
+      );
+
+      const result = await checkWatchdogFailedMarker(stateRoot, startTime);
+      expect(result.failed).toBe(false);
+      expect(existsSync(markerPath)).toBe(false);
+    } finally {
+      rmSync(stateRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('fails fast when marker is invalid JSON', async () => {
+    const stateRoot = mkdtempSync(join(tmpdir(), 'runtime-cli-watchdog-badjson-'));
+    try {
+      writeFileSync(join(stateRoot, 'watchdog-failed.json'), '{bad-json', 'utf-8');
+      const result = await checkWatchdogFailedMarker(stateRoot, Date.now());
+      expect(result.failed).toBe(true);
+      expect(result.reason).toContain('Failed to parse watchdog marker');
+    } finally {
+      rmSync(stateRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('fails fast when marker failedAt is not parseable', async () => {
+    const stateRoot = mkdtempSync(join(tmpdir(), 'runtime-cli-watchdog-invalid-failedat-'));
+    try {
+      writeFileSync(
+        join(stateRoot, 'watchdog-failed.json'),
+        JSON.stringify({ failedAt: { nested: true } }),
+        'utf-8',
+      );
+      const result = await checkWatchdogFailedMarker(stateRoot, Date.now());
+      expect(result.failed).toBe(true);
+      expect(result.reason).toContain('Invalid watchdog marker');
+    } finally {
+      rmSync(stateRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts numeric-string failedAt markers', async () => {
+    const stateRoot = mkdtempSync(join(tmpdir(), 'runtime-cli-watchdog-numeric-string-'));
+    try {
+      const startTime = Date.now();
+      writeFileSync(
+        join(stateRoot, 'watchdog-failed.json'),
+        JSON.stringify({ failedAt: String(startTime + 5_000) }),
+        'utf-8',
+      );
+
+      const result = await checkWatchdogFailedMarker(stateRoot, startTime);
+      expect(result.failed).toBe(true);
+      expect(result.reason).toContain('Watchdog marked team failed');
+    } finally {
+      rmSync(stateRoot, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('runtime-cli result artifact writer', () => {
+  it('writes result artifact via tmp+rename with required fields', async () => {
+    const jobsDir = mkdtempSync(join(tmpdir(), 'runtime-cli-artifact-'));
+    const jobId = 'job-123';
+    const finishedAt = '2026-03-02T12:00:00.000Z';
+    try {
+      await writeResultArtifact(
+        {
+          status: 'completed',
+          teamName: 'team-a',
+          taskResults: [{ taskId: '1', status: 'completed', summary: 'ok' }],
+          duration: 1.25,
+          workerCount: 2,
+        },
+        finishedAt,
+        jobId,
+        jobsDir,
+      );
+
+      const resultPath = join(jobsDir, `${jobId}-result.json`);
+      const tmpPath = `${resultPath}.tmp`;
+
+      expect(existsSync(resultPath)).toBe(true);
+      expect(existsSync(tmpPath)).toBe(false);
+
+      const payload = JSON.parse(readFileSync(resultPath, 'utf-8')) as Record<string, unknown>;
+      expect(payload.status).toBe('completed');
+      expect(payload.teamName).toBe('team-a');
+      expect(payload.duration).toBe(1.25);
+      expect(payload.workerCount).toBe(2);
+      expect(payload.finishedAt).toBe(finishedAt);
+      expect(Array.isArray(payload.taskResults)).toBe(true);
+    } finally {
+      rmSync(jobsDir, { recursive: true, force: true });
+    }
+  });
+
+  it('no-ops when job id or jobs dir is missing', async () => {
+    const jobsDir = mkdtempSync(join(tmpdir(), 'runtime-cli-artifact-noop-'));
+    try {
+      await writeResultArtifact(
+        {
+          status: 'failed',
+          teamName: 'team-b',
+          taskResults: [],
+          duration: 0.1,
+          workerCount: 1,
+        },
+        '2026-03-02T12:00:00.000Z',
+        undefined,
+        jobsDir,
+      );
+      expect(existsSync(join(jobsDir, 'undefined-result.json'))).toBe(false);
+      expect(readdirSync(jobsDir)).toEqual([]);
+    } finally {
+      rmSync(jobsDir, { recursive: true, force: true });
+    }
+  });
+
+  it('no-ops when jobs dir is missing even if job id is provided', async () => {
+    const jobsDir = mkdtempSync(join(tmpdir(), 'runtime-cli-artifact-missing-dir-'));
+    try {
+      await writeResultArtifact(
+        {
+          status: 'completed',
+          teamName: 'team-c',
+          taskResults: [{ taskId: '1', status: 'completed', summary: 'ok' }],
+          duration: 0.2,
+          workerCount: 1,
+        },
+        '2026-03-02T12:00:00.000Z',
+        'job-999',
+        undefined,
+      );
+
+      expect(readdirSync(jobsDir)).toEqual([]);
+    } finally {
+      rmSync(jobsDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('runtime-cli terminal preservation helper', () => {
+  it('preserves team state for completed terminal output', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'runtime-cli-terminal-complete-'));
+    try {
+      const teamName = 'runtime-cli-preserve-complete';
+      const stateRoot = join(cwd, '.omq', 'state', 'team', teamName);
+      const tasksDir = join(stateRoot, 'tasks');
+      mkdirSync(tasksDir, { recursive: true });
+      writeFileSync(
+        join(tasksDir, '1.json'),
+        JSON.stringify({
+          id: '1',
+          status: 'completed',
+          result: 'PASS: complete without shutdown',
+        }),
+        'utf-8',
+      );
+
+      const result = buildTerminalCliResult(stateRoot, teamName, 'complete', 1, Date.now() - 1_000);
+
+      expect(existsSync(stateRoot)).toBe(true);
+      expect(result.exitCode).toBe(0);
+      expect(result.output.status).toBe('completed');
+      expect(result.output.teamName).toBe(teamName);
+      expect(result.output.taskResults).toEqual([
+        {
+          taskId: '1',
+          status: 'completed',
+          summary: 'PASS: complete without shutdown',
+        },
+      ]);
+      expect(result.notice).toContain('preserving team state');
+      expect(result.notice).toContain(`omq team shutdown ${teamName}`);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('reports cancelled terminal phases without deleting team state', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'runtime-cli-terminal-cancelled-'));
+    try {
+      const teamName = 'runtime-cli-preserve-cancelled';
+      const stateRoot = join(cwd, '.omq', 'state', 'team', teamName);
+      const tasksDir = join(stateRoot, 'tasks');
+      mkdirSync(tasksDir, { recursive: true });
+      writeFileSync(
+        join(tasksDir, '1.json'),
+        JSON.stringify({
+          id: '1',
+          status: 'blocked',
+          summary: 'team stopped for inspection',
+        }),
+        'utf-8',
+      );
+
+      const result = buildTerminalCliResult(stateRoot, teamName, 'cancelled', 1, Date.now() - 1_000);
+
+      expect(existsSync(stateRoot)).toBe(true);
+      expect(result.exitCode).toBe(1);
+      expect(result.output.status).toBe('failed');
+      expect(result.output.teamName).toBe(teamName);
+      expect(result.output.taskResults).toEqual([
+        {
+          taskId: '1',
+          status: 'blocked',
+          summary: 'team stopped for inspection',
+        },
+      ]);
+      expect(result.notice).toContain('phase=cancelled');
+      expect(result.notice).toContain(`omq team shutdown ${teamName}`);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('runtime-cli terse-final output fallback', () => {
+  function seedTask(
+    cwd: string,
+    teamName: string,
+    task: { id: string; status?: string; result?: string; summary?: string },
+  ): string {
+    const stateRoot = join(cwd, '.omq', 'state', 'team', teamName);
+    const tasksDir = join(stateRoot, 'tasks');
+    mkdirSync(tasksDir, { recursive: true });
+    writeFileSync(
+      join(tasksDir, `${task.id}.json`),
+      JSON.stringify({ status: 'completed', ...task }),
+      'utf-8',
+    );
+    return stateRoot;
+  }
+
+  function writeOutputFile(cwd: string, teamName: string, taskId: string, content: string): void {
+    const outputsDir = join(cwd, '.omq', 'outputs');
+    mkdirSync(outputsDir, { recursive: true });
+    const suffix = Math.random().toString(36).slice(2, 8);
+    writeFileSync(
+      join(outputsDir, `team-${teamName}-task-${taskId}-${Date.now()}-${suffix}.md`),
+      content,
+      'utf-8',
+    );
+  }
+
+  describe('isTerseFinalSummary', () => {
+    it('treats empty / whitespace-only finals as terse', () => {
+      expect(isTerseFinalSummary('')).toBe(true);
+      expect(isTerseFinalSummary('   \n\t ')).toBe(true);
+    });
+
+    it('treats bare acknowledgements as terse regardless of punctuation/case', () => {
+      expect(isTerseFinalSummary('Done.')).toBe(true);
+      expect(isTerseFinalSummary('ready')).toBe(true);
+      expect(isTerseFinalSummary('OK!')).toBe(true);
+      expect(isTerseFinalSummary('Task complete.')).toBe(true);
+    });
+
+    it('preserves substantive finals', () => {
+      expect(isTerseFinalSummary('PASS: complete without shutdown')).toBe(false);
+      expect(isTerseFinalSummary('Done refactoring the auth module; added 3 tests.')).toBe(false);
+    });
+  });
+
+  describe('readTaskOutputFallback', () => {
+    it('returns null when the outputs directory is missing', () => {
+      const cwd = mkdtempSync(join(tmpdir(), 'runtime-cli-fallback-none-'));
+      try {
+        expect(
+          readTaskOutputFallback(join(cwd, '.omq', 'outputs'), 'team-x', '1'),
+        ).toBeNull();
+      } finally {
+        rmSync(cwd, { recursive: true, force: true });
+      }
+    });
+
+    it('does not match a different task whose id is a prefix', () => {
+      const cwd = mkdtempSync(join(tmpdir(), 'runtime-cli-fallback-prefix-'));
+      try {
+        writeOutputFile(cwd, 'team-x', '10', 'output for task ten');
+        expect(
+          readTaskOutputFallback(join(cwd, '.omq', 'outputs'), 'team-x', '1'),
+        ).toBeNull();
+      } finally {
+        rmSync(cwd, { recursive: true, force: true });
+      }
+    });
+  });
+
+  it('substitutes the task output file when the final is empty', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'runtime-cli-fallback-empty-'));
+    try {
+      const teamName = 'fallback-empty';
+      const stateRoot = seedTask(cwd, teamName, { id: '1', status: 'completed', result: '' });
+      writeOutputFile(cwd, teamName, '1', 'Implemented the parser fix and added regression coverage.');
+
+      const output = buildCliOutput(stateRoot, teamName, 'completed', 1, Date.now() - 1_000);
+
+      expect(output.taskResults).toEqual([
+        {
+          taskId: '1',
+          status: 'completed',
+          summary: 'Implemented the parser fix and added regression coverage.',
+        },
+      ]);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('substitutes the task output file when the final is a terse ack', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'runtime-cli-fallback-ack-'));
+    try {
+      const teamName = 'fallback-ack';
+      const stateRoot = seedTask(cwd, teamName, { id: '2', status: 'completed', result: 'Done.' });
+      writeOutputFile(cwd, teamName, '2', 'Detailed worker report with real findings.');
+
+      const output = buildCliOutput(stateRoot, teamName, 'completed', 1, Date.now() - 1_000);
+
+      expect(output.taskResults[0]?.summary).toBe('Detailed worker report with real findings.');
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('preserves a substantive final even when an output file exists', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'runtime-cli-fallback-preserve-'));
+    try {
+      const teamName = 'fallback-preserve';
+      const stateRoot = seedTask(cwd, teamName, {
+        id: '3',
+        status: 'completed',
+        result: 'PASS: complete without shutdown',
+      });
+      writeOutputFile(cwd, teamName, '3', 'Some other longer output that must NOT override the final.');
+
+      const output = buildCliOutput(stateRoot, teamName, 'completed', 1, Date.now() - 1_000);
+
+      expect(output.taskResults[0]?.summary).toBe('PASS: complete without shutdown');
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('leaves a terse final untouched when no output file is available', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'runtime-cli-fallback-missing-'));
+    try {
+      const teamName = 'fallback-missing';
+      const stateRoot = seedTask(cwd, teamName, { id: '4', status: 'completed', result: 'Done.' });
+
+      const output = buildCliOutput(stateRoot, teamName, 'completed', 1, Date.now() - 1_000);
+
+      expect(output.taskResults[0]?.summary).toBe('Done.');
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+});

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "t": {
+      "command": "node",
+      "args": ["${QODER_PLUGIN_ROOT}/bridge/mcp-server.cjs"]
+    }
+  }
+}

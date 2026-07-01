@@ -1,0 +1,469 @@
+/**
+ * OMQ HUD - Agents Element Tests
+ *
+ * Tests for agent visualization with different formats.
+ */
+
+import { describe, it, expect } from 'vitest';
+import {
+  renderAgents,
+  renderAgentsCoded,
+  renderAgentsCodedWithDuration,
+  renderAgentsDetailed,
+  renderAgentsByFormat,
+  renderAgentsMultiLine,
+} from '../hud/elements/agents.js';
+import type { ActiveAgent } from '../hud/types.js';
+
+// ANSI color codes for verification
+const RESET = '\x1b[0m';
+const CYAN = '\x1b[36m';
+const MAGENTA = '\x1b[35m';
+const YELLOW = '\x1b[33m';
+const GREEN = '\x1b[32m';
+
+// Helper to create mock agents
+function createAgent(
+  type: string,
+  model?: string,
+  startTime?: Date
+): ActiveAgent {
+  return {
+    id: `agent-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    type,
+    model,
+    status: 'running',
+    startTime: startTime || new Date(),
+  };
+}
+
+describe('Agents Element', () => {
+  describe('renderAgents (count format)', () => {
+    it('should return null for empty array', () => {
+      expect(renderAgents([])).toBeNull();
+    });
+
+    it('should return null when no agents are running', () => {
+      const agents: ActiveAgent[] = [
+        { ...createAgent('architect'), status: 'completed' },
+      ];
+      expect(renderAgents(agents)).toBeNull();
+    });
+
+    it('should show count of running agents', () => {
+      const agents: ActiveAgent[] = [
+        createAgent('architect'),
+        createAgent('explore'),
+      ];
+      const result = renderAgents(agents);
+      expect(result).toBe(`agents:${CYAN}2${RESET}`);
+    });
+  });
+
+  describe('renderAgentsCoded (codes format)', () => {
+    it('should return null for empty array', () => {
+      expect(renderAgentsCoded([])).toBeNull();
+    });
+
+    it('should show single-character codes for known agents', () => {
+      const agents: ActiveAgent[] = [
+        createAgent('oh-my-qoder:architect', 'high'),
+      ];
+      const result = renderAgentsCoded(agents);
+      // Architect with opus should be uppercase A in magenta
+      expect(result).toContain('agents:');
+      expect(result).toContain('A');
+    });
+
+    it('should use lowercase for sonnet/haiku tiers', () => {
+      const agents: ActiveAgent[] = [
+        createAgent('oh-my-qoder:explore', 'low'),
+      ];
+      const result = renderAgentsCoded(agents);
+      expect(result).toContain('e');
+    });
+
+    it('should handle multiple agents', () => {
+      const now = Date.now();
+      const agents: ActiveAgent[] = [
+        createAgent('oh-my-qoder:architect', 'high', new Date(now - 2000)),
+        createAgent('oh-my-qoder:explore', 'low', new Date(now - 1000)),
+        createAgent('oh-my-qoder:executor', 'medium', new Date(now)),
+      ];
+      const result = renderAgentsCoded(agents);
+      expect(result).toBeDefined();
+      // Should contain codes for all three (freshest first: x, e, A)
+      expect(result!.replace(/\x1b\[[0-9;]*m/g, '')).toBe('agents:xeA');
+    });
+
+    it('should handle agents without model info', () => {
+      const agents: ActiveAgent[] = [createAgent('oh-my-qoder:architect')];
+      const result = renderAgentsCoded(agents);
+      expect(result).toContain('A');
+    });
+
+    it('should use first letter for unknown agent types', () => {
+      const agents: ActiveAgent[] = [
+        createAgent('oh-my-qoder:unknown-agent', 'medium'),
+      ];
+      const result = renderAgentsCoded(agents);
+      expect(result!.replace(/\x1b\[[0-9;]*m/g, '')).toBe('agents:u');
+    });
+  });
+
+  describe('renderAgentsCodedWithDuration (codes-duration format)', () => {
+    it('should return null for empty array', () => {
+      expect(renderAgentsCodedWithDuration([])).toBeNull();
+    });
+
+    it('should not show duration for very recent agents', () => {
+      const agents: ActiveAgent[] = [
+        createAgent('oh-my-qoder:architect', 'high', new Date()),
+      ];
+      const result = renderAgentsCodedWithDuration(agents);
+      // No duration suffix for <10s
+      expect(result!.replace(/\x1b\[[0-9;]*m/g, '')).toBe('agents:A');
+    });
+
+    it('should show seconds for agents running 10-59s', () => {
+      const agents: ActiveAgent[] = [
+        createAgent(
+          'oh-my-qoder:architect',
+          'high',
+          new Date(Date.now() - 30000)
+        ), // 30 seconds ago
+      ];
+      const result = renderAgentsCodedWithDuration(agents);
+      const stripped = result!.replace(/\x1b\[[0-9;]*m/g, '');
+      expect(stripped).toMatch(/agents:A\(30s\)/);
+    });
+
+    it('should show minutes for agents running 1-9 min', () => {
+      const agents: ActiveAgent[] = [
+        createAgent(
+          'oh-my-qoder:architect',
+          'high',
+          new Date(Date.now() - 180000)
+        ), // 3 minutes ago
+      ];
+      const result = renderAgentsCodedWithDuration(agents);
+      const stripped = result!.replace(/\x1b\[[0-9;]*m/g, '');
+      expect(stripped).toMatch(/agents:A\(3m\)/);
+    });
+
+    it('should show alert for agents running 10+ min', () => {
+      const agents: ActiveAgent[] = [
+        createAgent(
+          'oh-my-qoder:architect',
+          'high',
+          new Date(Date.now() - 600000)
+        ), // 10 minutes ago
+      ];
+      const result = renderAgentsCodedWithDuration(agents);
+      const stripped = result!.replace(/\x1b\[[0-9;]*m/g, '');
+      expect(stripped).toMatch(/agents:A!/);
+    });
+  });
+
+  describe('renderAgentsDetailed (detailed format)', () => {
+    it('should return null for empty array', () => {
+      expect(renderAgentsDetailed([])).toBeNull();
+    });
+
+    it('should show full agent names', () => {
+      const agents: ActiveAgent[] = [createAgent('oh-my-qoder:architect')];
+      const result = renderAgentsDetailed(agents);
+      expect(result).toContain('architect');
+    });
+
+    it('should abbreviate common long names', () => {
+      const agents: ActiveAgent[] = [
+        createAgent('oh-my-qoder:executor', 'medium'),
+      ];
+      const result = renderAgentsDetailed(agents);
+      expect(result).toContain('exec');
+    });
+
+    it('should include duration for long-running agents', () => {
+      const agents: ActiveAgent[] = [
+        createAgent(
+          'oh-my-qoder:architect',
+          'high',
+          new Date(Date.now() - 120000)
+        ), // 2 minutes
+      ];
+      const result = renderAgentsDetailed(agents);
+      expect(result).toContain('(2m)');
+    });
+  });
+
+  describe('renderAgentsByFormat (format router)', () => {
+    const now = Date.now();
+    const agents: ActiveAgent[] = [
+      createAgent('oh-my-qoder:architect', 'high', new Date(now - 1000)),
+      createAgent('oh-my-qoder:explore', 'low', new Date(now)),
+    ];
+
+    it('should route to count format', () => {
+      const result = renderAgentsByFormat(agents, 'count');
+      expect(result).toBe(`agents:${CYAN}2${RESET}`);
+    });
+
+    it('should route to codes format', () => {
+      const result = renderAgentsByFormat(agents, 'codes');
+      expect(result).toContain('agents:');
+      // Freshest first: explore (e), then architect (A)
+      expect(result!.replace(/\x1b\[[0-9;]*m/g, '')).toBe('agents:eA');
+    });
+
+    it('should route to codes-duration format', () => {
+      const result = renderAgentsByFormat(agents, 'codes-duration');
+      expect(result).toContain('agents:');
+    });
+
+    it('should route to detailed format', () => {
+      const result = renderAgentsByFormat(agents, 'detailed');
+      expect(result).toContain('architect');
+    });
+
+    it('should route to descriptions format', () => {
+      const agentsWithDesc: ActiveAgent[] = [
+        {
+          ...createAgent('oh-my-qoder:architect', 'high'),
+          description: 'Analyzing code',
+        },
+      ];
+      const result = renderAgentsByFormat(agentsWithDesc, 'descriptions');
+      expect(result).toContain('A');
+      expect(result).toContain('Analyzing code');
+    });
+
+    it('should route to tasks format', () => {
+      const agentsWithDesc: ActiveAgent[] = [
+        {
+          ...createAgent('oh-my-qoder:architect', 'high'),
+          description: 'Analyzing code',
+        },
+      ];
+      const result = renderAgentsByFormat(agentsWithDesc, 'tasks');
+      expect(result).toContain('[');
+      expect(result).toContain('Analyzing code');
+      expect(result).not.toContain('A:'); // tasks format doesn't show codes
+    });
+
+    it('should default to codes for unknown format', () => {
+      const result = renderAgentsByFormat(agents, 'unknown' as any);
+      // Should fall back to codes format (freshest first: e, A)
+      expect(result).toContain('agents:');
+      expect(result!.replace(/\x1b\[[0-9;]*m/g, '')).toBe('agents:eA');
+    });
+  });
+
+  describe('Agent type codes', () => {
+    const testCases = [
+      // Build/Analysis Lane
+      { type: 'architect', model: 'high', expected: 'A' },
+      { type: 'explore', model: 'low', expected: 'e' },
+      { type: 'executor', model: 'medium', expected: 'x' },
+      { type: 'deep-executor', model: 'high', expected: 'D' }, // deprecated: falls back to first char
+      { type: 'debugger', model: 'medium', expected: 'g' },
+      { type: 'verifier', model: 'medium', expected: 'v' },
+      // Review Lane
+      { type: 'style-reviewer', model: 'low', expected: 'y' },
+      { type: 'quality-reviewer', model: 'medium', expected: 'q' }, // deprecated: falls back to first char
+      { type: 'api-reviewer', model: 'medium', expected: 'i' },
+      { type: 'security-reviewer', model: 'medium', expected: 'k' },
+      { type: 'performance-reviewer', model: 'medium', expected: 'o' },
+      { type: 'code-reviewer', model: 'high', expected: 'R' },
+      // Domain Specialists
+      { type: 'dependency-expert', model: 'medium', expected: 'l' },
+      { type: 'test-engineer', model: 'medium', expected: 't' },
+      { type: 'build-fixer', model: 'medium', expected: 'b' }, // deprecated: falls back to first char
+      { type: 'designer', model: 'medium', expected: 'd' },
+      { type: 'writer', model: 'low', expected: 'w' },
+      { type: 'qa-tester', model: 'medium', expected: 'q' },
+      { type: 'scientist', model: 'medium', expected: 's' },
+      { type: 'git-master', model: 'medium', expected: 'm' },
+      // Product Lane
+      { type: 'product-manager', model: 'medium', expected: 'pm' },
+      { type: 'ux-researcher', model: 'medium', expected: 'u' },
+      { type: 'information-architect', model: 'medium', expected: 'ia' },
+      { type: 'product-analyst', model: 'medium', expected: 'a' },
+      { type: 'quality-strategist', model: 'medium', expected: 'qs' },
+      // Coordination
+      { type: 'critic', model: 'high', expected: 'C' },
+      { type: 'analyst', model: 'high', expected: 'T' },
+      { type: 'planner', model: 'high', expected: 'P' },
+      { type: 'vision', model: 'medium', expected: 'v' },
+      // Multi-char codes with opus tier (first char uppercase)
+      { type: 'quality-reviewer', model: 'high', expected: 'Q' }, // deprecated: falls back to first char uppercase
+      { type: 'quality-strategist', model: 'high', expected: 'Qs' },
+      { type: 'product-manager', model: 'high', expected: 'Pm' },
+      { type: 'information-architect', model: 'high', expected: 'Ia' },
+      // Domain Specialists
+      { type: 'document-specialist', model: 'medium', expected: 'd' },
+      // Backward Compatibility
+      { type: 'researcher', model: 'medium', expected: 'r' },
+    ];
+
+    testCases.forEach(({ type, model, expected }) => {
+      it(`should render ${type} (${model}) as '${expected}'`, () => {
+        const agents: ActiveAgent[] = [
+          createAgent(`oh-my-qoder:${type}`, model),
+        ];
+        const result = renderAgentsCoded(agents);
+        const stripped = result!.replace(/\x1b\[[0-9;]*m/g, '');
+        expect(stripped).toBe(`agents:${expected}`);
+      });
+    });
+  });
+
+  describe('Model tier color coding', () => {
+    it('should use magenta for opus tier', () => {
+      const agents: ActiveAgent[] = [
+        createAgent('oh-my-qoder:architect', 'high'),
+      ];
+      const result = renderAgentsCoded(agents);
+      expect(result).toContain(MAGENTA);
+    });
+
+    it('should use yellow for sonnet tier', () => {
+      const agents: ActiveAgent[] = [
+        createAgent('oh-my-qoder:executor', 'medium'),
+      ];
+      const result = renderAgentsCoded(agents);
+      expect(result).toContain(YELLOW);
+    });
+
+    it('should use green for haiku tier', () => {
+      const agents: ActiveAgent[] = [
+        createAgent('oh-my-qoder:explore', 'low'),
+      ];
+      const result = renderAgentsCoded(agents);
+      expect(result).toContain(GREEN);
+    });
+
+    it('should use cyan for unknown model', () => {
+      const agents: ActiveAgent[] = [
+        createAgent('oh-my-qoder:architect'),
+      ];
+      const result = renderAgentsCoded(agents);
+      expect(result).toContain(CYAN);
+    });
+  });
+
+  describe('renderAgentsMultiLine (multiline format)', () => {
+    it('should return empty for no running agents', () => {
+      const result = renderAgentsMultiLine([]);
+      expect(result.headerPart).toBeNull();
+      expect(result.detailLines).toHaveLength(0);
+    });
+
+    it('should return empty for completed agents only', () => {
+      const agents: ActiveAgent[] = [
+        { ...createAgent('oh-my-qoder:architect'), status: 'completed' },
+      ];
+      const result = renderAgentsMultiLine(agents);
+      expect(result.headerPart).toBeNull();
+      expect(result.detailLines).toHaveLength(0);
+    });
+
+    it('should render single agent with tree character (last)', () => {
+      const agents: ActiveAgent[] = [
+        {
+          ...createAgent('oh-my-qoder:architect', 'high'),
+          description: 'analyzing code',
+        },
+      ];
+      const result = renderAgentsMultiLine(agents);
+      expect(result.headerPart).toContain('agents:');
+      expect(result.headerPart).toContain('1');
+      expect(result.detailLines).toHaveLength(1);
+      // Single agent should use └─ (last indicator)
+      expect(result.detailLines[0]).toContain('└─');
+      expect(result.detailLines[0]).toContain('A');
+      expect(result.detailLines[0]).toContain('analyzing code');
+    });
+
+    it('should render multiple agents with correct tree characters', () => {
+      const now = Date.now();
+      const agents: ActiveAgent[] = [
+        {
+          ...createAgent('oh-my-qoder:architect', 'high', new Date(now - 1000)),
+          description: 'analyzing code',
+        },
+        {
+          ...createAgent('oh-my-qoder:explore', 'low', new Date(now)),
+          description: 'searching files',
+        },
+      ];
+      const result = renderAgentsMultiLine(agents);
+      expect(result.headerPart).toContain('2');
+      expect(result.detailLines).toHaveLength(2);
+      // Freshest-first ordering: explore first, architect last
+      expect(result.detailLines[0]).toContain('├─');
+      expect(result.detailLines[0]).toContain('e');
+      expect(result.detailLines[0]).toContain('searching files');
+      expect(result.detailLines[1]).toContain('└─');
+      expect(result.detailLines[1]).toContain('A');
+      expect(result.detailLines[1]).toContain('analyzing code');
+    });
+
+    it('should limit to maxLines and show overflow indicator', () => {
+      const agents: ActiveAgent[] = [
+        createAgent('oh-my-qoder:architect', 'high'),
+        createAgent('oh-my-qoder:explore', 'low'),
+        createAgent('oh-my-qoder:executor', 'medium'),
+        createAgent('oh-my-qoder:document-specialist', 'low'),
+      ];
+      const result = renderAgentsMultiLine(agents, 2);
+      // 2 agents + 1 overflow indicator
+      expect(result.detailLines).toHaveLength(3);
+      expect(result.detailLines[2]).toContain('+2 more');
+    });
+
+    it('should include duration for long-running agents', () => {
+      const agents: ActiveAgent[] = [
+        createAgent(
+          'oh-my-qoder:architect',
+          'high',
+          new Date(Date.now() - 120000) // 2 minutes ago
+        ),
+      ];
+      const result = renderAgentsMultiLine(agents);
+      expect(result.detailLines).toHaveLength(1);
+      expect(result.detailLines[0]).toContain('2m');
+    });
+
+    it('should truncate long descriptions', () => {
+      const agents: ActiveAgent[] = [
+        {
+          ...createAgent('oh-my-qoder:architect', 'high'),
+          description:
+            'This is a very long description that should be truncated to fit in the display',
+        },
+      ];
+      const result = renderAgentsMultiLine(agents);
+      expect(result.detailLines).toHaveLength(1);
+      expect(result.detailLines[0]).toContain('...');
+      // Strip ANSI codes before checking length
+      const stripped = result.detailLines[0].replace(/\x1b\[[0-9;]*m/g, '');
+      expect(stripped.length).toBeLessThan(80);
+    });
+
+    it('should handle agents without descriptions', () => {
+      const agents: ActiveAgent[] = [createAgent('oh-my-qoder:architect', 'high')];
+      const result = renderAgentsMultiLine(agents);
+      expect(result.detailLines).toHaveLength(1);
+      expect(result.detailLines[0]).toContain('...');
+    });
+
+    it('should route to multiline from renderAgentsByFormat', () => {
+      const agents: ActiveAgent[] = [createAgent('oh-my-qoder:architect', 'high')];
+      const result = renderAgentsByFormat(agents, 'multiline');
+      // Should return the header part only (backward compatibility)
+      expect(result).toContain('agents:');
+      expect(result).toContain('1');
+    });
+  });
+});
