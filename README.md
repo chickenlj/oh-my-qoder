@@ -1,82 +1,256 @@
 # oh-my-qoder
 
-Multi-agent orchestration plugin for Qoder CLI, inspired by oh-my-opencode, oh-my-claudecode.
+> Intelligent multi-agent orchestration for Qoder CLI — specialized agents, workflow skills, lifecycle hooks, and MCP tools that turn a single prompt into a coordinated, verified engineering pipeline.
+
+Inspired by oh-my-opencode and oh-my-claudecode, **oh-my-qoder (OMQ)** wraps the Qoder CLI (`qodercli`) with an orchestration layer: it routes work to the right specialist agent, runs parallel/looping workflows, persists state across sessions, and enforces verification before claiming completion.
+
+## Table of contents
+
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Usage](#usage)
+- [Features](#features)
+- [Agents](#agents)
+- [Skills](#skills)
+- [Model routing](#model-routing)
+- [State &amp; memory](#state--memory)
+- [Configuration](#configuration)
+- [Project structure](#project-structure)
+- [Documentation](#documentation)
+- [Development](#development)
+- [License](#license)
+
+---
+
+## Requirements
+
+| Requirement | Notes |
+|---|---|
+| **Qoder CLI** (`qodercli`) | The host CLI OMQ orchestrates. Install and log in first. |
+| **Node.js ≥ 20** | Required to build and run the CLI/hooks. |
+| **git** | Used to clone and build from source. |
+| **tmux** *(optional)* | Needed for Team / parallel worker features. macOS/Linux native; on Windows use WSL2. |
+| **Auth** | A Qoder/Qwen login (`qodercli login`) or a `DASHSCOPE_API_KEY` environment variable. |
+
+---
 
 ## Installation
 
+OMQ runs as a **Qoder CLI plugin**: its skills, agents, and lifecycle hooks are embedded directly into your `qodercli` sessions.
+
+> Qoder CLI installs plugins from a **local directory** (`qodercli plugins install <path>`) — there is no marketplace/remote install, and the install step does not run `npm`. So you clone and build the plugin first, then point Qoder CLI at your local checkout.
+
+**1. Clone and build** (produces `dist/`, which the plugin hooks load at runtime):
+
 ```bash
-qodercli plugins install <path-to-oh-my-qoder>
+git clone https://github.com/chickenlj/oh-my-qoder.git
+cd oh-my-qoder
+npm install
+npm run build
 ```
 
-## Features Added to QOder CLI
+**2. Install the local checkout as a plugin, then reload:**
 
-- **Specialized Agents** -- 19+ role-based agents (explore, architect, executor, debugger, code-reviewer, test-engineer, designer, and more) with automatic model routing by task complexity
-- **Workflow Skills** -- Autopilot, Ralph (persistence loop), UltraWork (parallel execution), Team (coordinated multi-agent), RalPlan (consensus planning), Deep Interview, and more
-- **Hooks System** -- Pre/post lifecycle hooks for session start, compaction, tool use, and keyword detection with `<system-reminder>` injection
-- **MCP Tools** -- State management, notepad, project memory, code intelligence (LSP diagnostics, AST search/replace), and trace timeline via Model Context Protocol
-- **Team Pipeline** -- Staged multi-agent orchestration: plan -> PRD -> exec -> verify -> fix (loop)
-- **Commit Protocol** -- Structured git trailers (Constraint, Rejected, Directive, Confidence, Scope-risk, Not-tested)
-
-## Quick Start
-
-1. Install the plugin:
-   ```bash
-   qodercli plugins install /path/to/oh-my-qoder
-   ```
-
-2. Run setup:
-   ```
-   /oh-my-qoder:omq-setup
-   ```
-
-3. Verify installation:
-   ```
-   /oh-my-qoder:omq-doctor
-   ```
-
-4. Start using skills:
-   ```
-   /oh-my-qoder:autopilot "build a REST API"
-   /oh-my-qoder:ralph "fix all failing tests"
-   /oh-my-qoder:team 3:executor "implement feature X"
-   ```
-
-## Plugin Structure
-
+```bash
+qodercli plugins install "$(pwd)"
 ```
+
+Restart Qoder CLI, or run `/plugins reload` inside a session, to activate it.
+
+**3. Configure and verify** from inside a Qoder CLI session:
+
+```text
+/oh-my-qoder:omq-setup     # generate ~/.qoder/AGENTS.md and configure hooks/HUD/MCP
+/oh-my-qoder:omq-doctor    # verify the installation
+```
+
+> **Updating:** `git pull`, then re-run `npm run build`, `/plugins reload`, and `/oh-my-qoder:omq-setup` to apply the latest hooks and configuration.
+
+---
+
+## Quick start
+
+1. Install and build, then register the plugin (see [Installation](#installation)).
+2. Configure: `/oh-my-qoder:omq-setup`.
+3. Verify: `/oh-my-qoder:omq-doctor`.
+4. Drive work with a natural-language keyword inside Qoder CLI:
+
+```text
+autopilot build me a REST API with health checks and tests
+ralph fix all failing tests, don't stop until green
+ultrawork add pagination to the users and orders endpoints
+team 3:executor implement the billing module
+```
+
+---
+
+## Usage
+
+Once the plugin is registered, OMQ works entirely inside your Qoder CLI sessions — its hooks detect intent and inject orchestration automatically. There are two ways to drive it.
+
+### Magic keywords (natural language)
+
+Type a keyword anywhere in your message and OMQ activates the matching workflow automatically:
+
+| Keyword(s) | Activates | What it does |
+|---|---|---|
+| `autopilot`, `build me`, `I want a` | Autopilot | Full idea → spec → plan → code → QA → validate pipeline |
+| `ralph`, `keep going`, `don't stop` | Ralph | Self-referential persistence loop with verification |
+| `ultrawork`, `parallel` | UltraWork | Maximum-parallelism multi-agent execution |
+| `team` | Team | N coordinated agents on a shared task list |
+| `plan this`, `let's plan` | Plan | Strategic planning (optionally consensus-based) |
+| `ralplan`, `consensus plan` | RalPlan | Planner + architect + critic consensus deliberation |
+| `cleanup`, `deslop` | AI-Slop Cleaner | Regression-safe dead-code / duplication cleanup |
+| `interview`, `gather requirements` | Deep Interview | Socratic, ambiguity-gated requirement gathering |
+| `cancel`, `stop`, `abort` | Cancel | Ends active execution modes |
+
+### Slash commands (in-session)
+
+Invoke plugin commands with the `/oh-my-qoder:<name>` prefix, e.g.:
+
+```text
+/oh-my-qoder:omq-setup      /oh-my-qoder:omq-doctor
+/oh-my-qoder:hud            /oh-my-qoder:trace
+/oh-my-qoder:mcp-setup      /oh-my-qoder:remember
+```
+
+---
+
+## Features
+
+- **Specialized agents** — role-based agents (explore, architect, executor, debugger, code-reviewer, test-engineer, designer, and more) with automatic model routing by task complexity.
+- **Workflow skills** — Autopilot, Ralph, UltraWork, Team, RalPlan, Deep Interview, UltraQA, and many more.
+- **Hooks system** — pre/post lifecycle hooks for session start, compaction, tool use, and keyword detection with `<system-reminder>` injection.
+- **MCP tools** — state management, notepad, project memory, code intelligence (LSP diagnostics, AST search/replace), and trace timeline via the Model Context Protocol.
+- **Team pipeline** — staged multi-agent orchestration: `plan → PRD → exec → verify → fix` (bounded loop).
+- **HUD statusline** — live mode/agent/todo/context display in the Qoder CLI status bar.
+- **Persistent state** — cross-session memory, notepad, and plans under `.omq/`.
+- **Commit protocol** — structured git trailers (Constraint, Rejected, Directive, Confidence, Scope-risk, Not-tested).
+
+---
+
+## Agents
+
+Specialized roles the orchestrator delegates to. Each has a focused prompt and a default model tier.
+
+| Lane | Agents |
+|---|---|
+| Build / Analysis | `explore`, `analyst`, `planner`, `architect`, `debugger`, `executor`, `verifier` |
+| Review | `code-reviewer`, `security-reviewer`, `code-simplifier` |
+| Specialists | `test-engineer`, `qa-tester`, `designer`, `writer`, `document-specialist`, `scientist`, `git-master`, `tracer` |
+| Coordination | `critic` |
+
+See [`docs/agents/model-compatibility.md`](docs/agents/model-compatibility.md) and [`AGENTS.md`](AGENTS.md) for the full catalog and tiered variants.
+
+---
+
+## Skills
+
+Workflow automation invoked via magic keywords, `/oh-my-qoder:<name>`, or `$name`:
+
+- **Execution:** `autopilot`, `ralph`, `ultrawork`, `team`, `ultraqa`, `ultragoal`
+- **Planning:** `plan`, `ralplan`, `deep-interview`, `deep-dive`
+- **Quality:** `ai-slop-cleaner`, `verify`, `visual-verdict`, `trace`, `debug`
+- **Knowledge:** `remember`, `wiki`, `learner`, `deepinit`, `external-context`
+- **Setup / ops:** `omq-setup`, `omq-doctor`, `mcp-setup`, `hud`, `configure-notifications`, `release`
+
+Browse the full set in [`skills/`](skills/) or the [`.qoder-plugin/plugin.json`](.qoder-plugin/plugin.json) manifest.
+
+---
+
+## Model routing
+
+OMQ automatically selects a model tier based on task complexity:
+
+| Tier | Use case |
+|---|---|
+| **LOW** | Quick lookups, narrow checks (e.g. `explore`, `writer`) |
+| **MEDIUM** | Standard implementation, debugging, reviews (e.g. `executor`, `debugger`) |
+| **HIGH** | Architecture, deep analysis, complex refactors (e.g. `architect`, `critic`) |
+
+Routing is configurable per-agent and per-project — see [Configuration](#configuration).
+
+---
+
+## State & memory
+
+Persistent state lives in the `.omq/` directory at your workspace root:
+
+- `.omq/state/` — mode state files (JSON)
+- `.omq/notepad.md` — session-persistent notes
+- `.omq/project-memory.json` — cross-session project knowledge
+- `.omq/plans/` — planning documents
+- `.omq/logs/` — audit logs
+
+For multi-repo workspaces, drop a `.omq-workspace` marker file in the parent directory so sibling repos share one `.omq/`. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+---
+
+## Configuration
+
+OMQ reads layered configuration (later entries win):
+
+```text
+Defaults → user config → project config (.qoder/omq.jsonc) → environment variables
+```
+
+You can override agent models, toggle features, and customize magic keywords. The setup wizard also generates the orchestration instruction file:
+
+| Scope | File |
+|---|---|
+| Global | `~/.qoder/AGENTS.md` |
+| Project | `.qoder/AGENTS.md` |
+
+See [`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md#configuration) and [`docs/settings-schema.md`](docs/settings-schema.md) for the full reference.
+
+---
+
+## Project structure
+
+```text
 oh-my-qoder/
-  agents/          # Agent role prompts (architect, executor, debugger, etc.)
-  bin/             # CLI entry points
+  agents/          # Agent role prompts (architect, executor, debugger, ...)
   commands/        # Slash command definitions (/oh-my-qoder:<name>)
+  dist/            # Compiled TypeScript output (generated by `npm run build`)
   docs/            # Reference documentation
-  hooks/           # Lifecycle hooks (session-start, pre-compact, etc.)
-  scripts/         # Build and utility scripts
-  skills/          # Workflow skill definitions (autopilot, ralph, team, etc.)
+  hooks/           # Plugin hook manifest (hooks.json)
+  scripts/         # Runtime hook scripts and build utilities
+  skills/          # Workflow skill definitions (autopilot, ralph, team, ...)
   src/             # TypeScript source
-  templates/       # Templates for QODER.md, AGENTS.md generation
-  QODER.md         # Main orchestration instructions (injected into sessions)
-  AGENTS.md        # Agent catalog and detailed orchestration guide
-  package.json     # Plugin manifest
+  templates/       # Templates for AGENTS.md and hook generation
+  .qoder-plugin/   # Qoder CLI plugin manifest (plugin.json)
+  AGENTS.md        # Orchestration instructions (injected into sessions)
 ```
 
-## Key Concepts
+> `dist/` is a build artifact and is not committed — run `npm run build` after cloning.
 
-### Agents
-Specialized AI roles invoked via `/prompts:name`. Each agent has a focused prompt optimized for its task (e.g., `architect` for system design, `executor` for implementation, `debugger` for root-cause analysis).
+---
 
-### Skills
-Workflow automation invoked via `/oh-my-qoder:<name>`. Skills orchestrate multi-step processes like autonomous coding (`autopilot`), persistent iteration (`ralph`), or parallel execution (`ultrawork`).
+## Documentation
 
-### State Management
-Persistent state stored in `.omq/` directory:
-- `.omq/state/` -- Mode state files (JSON)
-- `.omq/notepad.md` -- Session-persistent notes
-- `.omq/project-memory.json` -- Cross-session project knowledge
-- `.omq/plans/` -- Planning documents
+- [Getting Started](docs/GETTING-STARTED.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Features](docs/FEATURES.md)
+- [Tools](docs/TOOLS.md)
+- [Hooks](docs/HOOKS.md)
+- [Team / Worktree mode](docs/TEAM-WORKTREE-MODE.md)
+- [Local plugin install](docs/LOCAL_PLUGIN_INSTALL.md)
 
-### Model Routing
-Automatic model selection by task complexity:
-- **lite** -- Quick lookups, narrow checks
-- **auto/efficient** -- Standard implementation, debugging, reviews
-- **performance/ultimate** -- Architecture, deep analysis, complex refactors
+---
 
+## Development
+
+```bash
+npm install       # install dependencies
+npm run build     # compile TypeScript + build MCP server + compose docs
+npm run dev       # watch-mode compile
+npm test          # run the test suite (vitest)
+npm run lint      # lint src/
+```
+
+---
+
+## License
+
+[MIT](LICENSE)

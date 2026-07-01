@@ -70,7 +70,7 @@
     "node": ">=20.0.0"
   },
   "author": "oh-my-qoder contributors",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "keywords": [
     "qoder",
     "qoder-cli",

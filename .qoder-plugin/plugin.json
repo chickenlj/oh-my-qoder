@@ -6,7 +6,7 @@
     "name": "oh-my-qoder contributors"
   },
   "homepage": "https://github.com/user/oh-my-qoder",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "keywords": [
     "qoder",
     "plugin",
