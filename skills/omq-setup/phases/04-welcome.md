@@ -134,7 +134,7 @@ gh auth status &>/dev/null
 **Before prompting, check if the repository is already starred:**
 
 ```bash
-gh api user/starred/chickenlj/oh-my-qoder &>/dev/null
+gh api user/starred/spring-ai-alibaba/oh-my-qoder &>/dev/null
 ```
 
 **If already starred (exit code 0):**
@@ -155,7 +155,7 @@ Use AskUserQuestion:
 If user chooses "Yes, star it!":
 
 ```bash
-gh api -X PUT /user/starred/chickenlj/oh-my-qoder 2>/dev/null && echo "Thanks for starring!" || true
+gh api -X PUT /user/starred/spring-ai-alibaba/oh-my-qoder 2>/dev/null && echo "Thanks for starring!" || true
 ```
 
 **Note:** Fail silently if the API call doesn't work - never block setup completion.
@@ -165,7 +165,7 @@ gh api -X PUT /user/starred/chickenlj/oh-my-qoder 2>/dev/null && echo "Thanks fo
 ```bash
 echo ""
 echo "If you enjoy oh-my-qoder, consider starring the repo:"
-echo "  https://github.com/chickenlj/oh-my-qoder"
+echo "  https://github.com/spring-ai-alibaba/oh-my-qoder"
 echo ""
 ```
 

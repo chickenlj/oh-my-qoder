@@ -37,7 +37,7 @@ OMQ runs as a **Qoder CLI plugin**: its skills, agents, and lifecycle hooks are 
 **1. Clone and build** (produces `dist/`, which the plugin hooks load at runtime):
 
 ```bash
-git clone https://github.com/chickenlj/oh-my-qoder.git
+git clone https://github.com/spring-ai-alibaba/oh-my-qoder.git
 cd oh-my-qoder
 npm install
 npm run build

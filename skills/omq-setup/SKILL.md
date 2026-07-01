@@ -79,7 +79,7 @@ EXAMPLES:
   /oh-my-qoder:omq-setup --global  # Update all projects
   /oh-my-qoder:omq-setup --force   # Re-run full setup wizard
 
-For more info: https://github.com/chickenlj/oh-my-qoder
+For more info: https://github.com/spring-ai-alibaba/oh-my-qoder
 ```
 
 

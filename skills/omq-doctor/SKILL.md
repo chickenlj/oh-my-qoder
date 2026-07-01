@@ -201,7 +201,7 @@ node -e "const p=require('path'),f=require('fs'),h=require('os').homedir(),d=pro
 ### Fix: Missing/Outdated AGENTS.md
 Fetch latest from GitHub and write to `${QODER_CONFIG_DIR:-~/.qoder}/AGENTS.md`:
 ```
-WebFetch(url: "https://raw.githubusercontent.com/chickenlj/oh-my-qoder/main/docs/CLAUDE.md", prompt: "Return the complete raw markdown content exactly as-is")
+WebFetch(url: "https://raw.githubusercontent.com/spring-ai-alibaba/oh-my-qoder/main/docs/CLAUDE.md", prompt: "Return the complete raw markdown content exactly as-is")
 ```
 
 ### Fix: Legacy Curl-Installed Content

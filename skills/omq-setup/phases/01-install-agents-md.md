@@ -46,7 +46,7 @@ For `local` installs inside a git repository, the script also seeds `.git/info/e
 
 **FALLBACK** if curl fails:
 Tell user to manually download from:
-https://raw.githubusercontent.com/chickenlj/oh-my-qoder/main/docs/CLAUDE.md
+https://raw.githubusercontent.com/spring-ai-alibaba/oh-my-qoder/main/docs/CLAUDE.md
 
 **Note**: The downloaded AGENTS.md includes Context Persistence instructions with `<remember>` tags for surviving conversation compaction.
 

@@ -123,10 +123,10 @@ describe('release generation', () => {
       'v4.10.1',
     );
 
-    expect(body).toContain('git clone https://github.com/chickenlj/oh-my-qoder.git');
+    expect(body).toContain('git clone https://github.com/spring-ai-alibaba/oh-my-qoder.git');
     expect(body).toContain('qodercli plugins install "$(pwd)"');
     expect(body).toContain('git pull && npm run build');
-    expect(body).toContain('https://github.com/chickenlj/oh-my-qoder/compare/v4.10.1...v4.10.2');
+    expect(body).toContain('https://github.com/spring-ai-alibaba/oh-my-qoder/compare/v4.10.1...v4.10.2');
     expect(body).toContain('@blue-int @DdangJin @chickenlj');
     expect(body.match(/## Contributors/g)).toHaveLength(1);
   });

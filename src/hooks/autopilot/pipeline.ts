@@ -8,7 +8,7 @@
  * via PipelineConfig. The orchestrator manages state transitions, signal
  * detection, and prompt generation.
  *
- * @see https://github.com/chickenlj/oh-my-qoder/issues/1130
+ * @see https://github.com/spring-ai-alibaba/oh-my-qoder/issues/1130
  */
 
 import type {

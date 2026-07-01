@@ -10,7 +10,7 @@
  * - save: Write current filesystem state as manifest
  * - check: Return whether manifest exists and is valid
  *
- * @see https://github.com/chickenlj/oh-my-qoder/issues/1719
+ * @see https://github.com/spring-ai-alibaba/oh-my-qoder/issues/1719
  */
 
 import { z } from 'zod';

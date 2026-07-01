@@ -1894,7 +1894,7 @@ export async function checkPersistentModes(
 
   // CRITICAL: Never block context-limit/critical-context stops.
   // Blocking these causes a deadlock where Qoder CLI cannot compact or exit.
-  // See: https://github.com/chickenlj/oh-my-qoder/issues/213
+  // See: https://github.com/spring-ai-alibaba/oh-my-qoder/issues/213
   if (isCriticalContextStop(stopContext)) {
     return {
       shouldBlock: false,
@@ -1938,7 +1938,7 @@ export async function checkPersistentModes(
   // When the API returns 429 / quota-exhausted, Qoder CLI stops the session.
   // Blocking these stops creates an infinite retry loop: the hook injects a
   // continuation prompt → Claude hits the rate limit again → stops again → loops.
-  // Fix for: https://github.com/chickenlj/oh-my-qoder/issues/777
+  // Fix for: https://github.com/spring-ai-alibaba/oh-my-qoder/issues/777
   if (isRateLimitStop(stopContext)) {
     return {
       shouldBlock: false,

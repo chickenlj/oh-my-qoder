@@ -1,7 +1,7 @@
 /**
  * Tests for deepinit-manifest tool
  *
- * @see https://github.com/chickenlj/oh-my-qoder/issues/1719
+ * @see https://github.com/spring-ai-alibaba/oh-my-qoder/issues/1719
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';

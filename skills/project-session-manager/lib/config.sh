@@ -17,7 +17,7 @@ psm_init() {
 {
   "aliases": {
     "omc": {
-      "repo": "chickenlj/oh-my-qoder",
+      "repo": "spring-ai-alibaba/oh-my-qoder",
       "local": "~/Workspace/oh-my-qoder",
       "default_base": "main"
     }
