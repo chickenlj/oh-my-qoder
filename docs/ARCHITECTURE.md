@@ -303,7 +303,7 @@ ralplan this feature
 | `ultrathink`, `think hard`, `think deeply` | Deep reasoning mode |
 | `tdd`, `test first`, `red green` | TDD workflow |
 | `deslop`, `anti-slop` | AI expression cleanup |
-| `cancelomc`, `stopomc` | Cancel active execution mode |
+| `cancelomq`, `stopomq` | Cancel active execution mode |
 
 ### Keyword Detection Sources
 
@@ -415,12 +415,12 @@ OMQ hooks are declared in `hooks.json`. Each hook is a Node.js script with a tim
 
 Disable all hooks:
 ```bash
-export DISABLE_OMC=1
+export DISABLE_OMQ=1
 ```
 
 Skip specific hooks (comma-separated):
 ```bash
-export OMC_SKIP_HOOKS="keyword-detector,persistent-mode"
+export OMQ_SKIP_HOOKS="keyword-detector,persistent-mode"
 ```
 
 ---

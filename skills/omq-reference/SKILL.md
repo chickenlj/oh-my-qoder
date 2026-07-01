@@ -98,7 +98,7 @@ Invoke built-in workflows via `/oh-my-qoder:<name>`.
 - `"tdd"->TDD mode`
 - `"deepsearch"->codebase search`
 - `"ultrathink"->deep reasoning`
-- `"cancelomc"->cancel`
+- `"cancelomq"->cancel`
 - Team orchestration is explicit via `/team`.
 
 ## Team Pipeline

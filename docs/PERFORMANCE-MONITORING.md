@@ -96,7 +96,10 @@ The supported monitoring surfaces on current builds are:
 #### Supported Inspection Commands
 
 ```bash
-omq hud
+# Inside Qoder CLI, use the HUD skill:
+/oh-my-qoder:hud
+
+# From a shell, inspect replay and session files directly:
 tail -20 .omq/state/agent-replay-*.jsonl
 ls .omq/sessions/*.json
 ```
@@ -107,7 +110,7 @@ Use a supported preset such as `focused` or `full` for agent and context visibil
 
 ```json
 {
-  "omcHud": {
+  "omqHud": {
     "preset": "focused"
   }
 }
@@ -185,7 +188,7 @@ Edit `~/.qoder/settings.json`:
 
 ```json
 {
-  "omcHud": {
+  "omqHud": {
     "preset": "focused",
     "elements": {
       "agents": true,
@@ -313,7 +316,7 @@ Visit the platform to:
 | Resource | Description | Link |
 |----------|-------------|------|
 | Qoder CLI Discord | Community support and tips | [discord.gg/anthropic](https://discord.gg/anthropic) |
-| OMQ GitHub Issues | Bug reports and feature requests | [GitHub Issues](https://github.com/Yeachan-Heo/oh-my-qoder/issues) |
+| OMQ GitHub Issues | Bug reports and feature requests | [GitHub Issues](https://github.com/anthropics/oh-my-qoder/issues) |
 | Anthropic Documentation | Official Claude documentation | [docs.anthropic.com](https://docs.anthropic.com) |
 
 ### Model Performance Benchmarks

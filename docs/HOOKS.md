@@ -74,13 +74,13 @@ Handle code quality, permissions, and subagent tracking.
 ### Disable All Hooks
 
 ```bash
-export DISABLE_OMC=1
+export DISABLE_OMQ=1
 ```
 
 ### Disable Specific Hooks
 
 ```bash
-export OMC_SKIP_HOOKS="keyword-detector,notepad"
+export OMQ_SKIP_HOOKS="keyword-detector,notepad"
 ```
 
 Separate hook names with commas to skip only those hooks.
@@ -154,7 +154,7 @@ Fires when a tool use fails.
 |--------|------|---------|
 | `post-tool-use-failure.mjs` | Provides recovery guidance for failed tool use | 3s |
 
-Disable via `DISABLE_OMC=1` (or `DISABLE_OMC=true`) or `OMC_SKIP_HOOKS=post-tool-use-failure` (the `post-tool-use` token also skips it, alongside `post-tool-verifier.mjs`).
+Disable via `DISABLE_OMQ=1` (or `DISABLE_OMQ=true`) or `OMQ_SKIP_HOOKS=post-tool-use-failure` (the `post-tool-use` token also skips it, alongside `post-tool-verifier.mjs`).
 
 ### SubagentStart
 
@@ -272,7 +272,7 @@ When a session ID is present, state is stored in session scope under `.omq/state
 #### Canceling a Mode
 
 ```
-cancelomc
+cancelomq
 ```
 
 or
@@ -368,7 +368,7 @@ Magic keywords automatically activate OMQ skills or execution modes when specifi
 
 - **Sanitization**: Keywords inside code blocks, within URLs, or in file paths are ignored
 - **Team worker protection**: Disabled when the `OMQ_TEAM_WORKER` environment variable is set (prevents infinite spawning)
-- **Disable**: Set `DISABLE_OMC=1` or `OMC_SKIP_HOOKS=keyword-detector`
+- **Disable**: Set `DISABLE_OMQ=1` or `OMQ_SKIP_HOOKS=keyword-detector`
 
 ### Execution Mode Keywords
 
@@ -376,7 +376,7 @@ These keywords invoke a skill and create a state file.
 
 | Keyword | Skill | Description |
 |---------|-------|-------------|
-| `cancelomc`, `stopomc` | cancel | Cancels all active modes |
+| `cancelomq`, `stopomq` | cancel | Cancels all active modes |
 | `ralph`, `don't stop`, `must complete`, `until done` | ralph | Persistent execution until verification completes |
 | `autopilot`, `build me`, `I want a`, `handle it all`, `end to end`, `auto-pilot`, `full auto`, `fullsend`, `e2e this` | autopilot | Fully autonomous execution |
 | `ultrawork`, `ulw`, `uw` | ultrawork | Maximum parallel execution |
@@ -470,7 +470,7 @@ implement password validation with tdd
 code review the recent changes
 
 # Cancel
-stopomc
+stopomq
 ```
 
 ### Note on the `team` Keyword

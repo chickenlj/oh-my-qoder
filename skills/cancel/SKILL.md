@@ -35,7 +35,7 @@ Automatically detects which mode is active and cancels it:
 /oh-my-qoder:cancel
 ```
 
-Or say: "cancelomc", "stopomc"
+Or say: "cancelomq", "stopomq"
 
 ## Critical: Deferred Tool Handling
 

@@ -159,7 +159,7 @@ console.log(result.modifiedInput.model); // 'sonnet'
 Enable debug logging to see when models are auto-injected:
 
 ```bash
-export OMC_DEBUG=true
+export OMQ_DEBUG=true
 ```
 
 When enabled, you'll see warnings like:
@@ -168,7 +168,7 @@ When enabled, you'll see warnings like:
 [OMQ] Auto-injecting model: sonnet for executor
 ```
 
-**Important:** Warnings are ONLY shown when `OMC_DEBUG=true`. Without this flag, enforcement happens silently.
+**Important:** Warnings are ONLY shown when `OMQ_DEBUG=true`. Without this flag, enforcement happens silently.
 
 ## Usage Examples
 

@@ -441,14 +441,14 @@ lsp_servers()
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OMC_LSP_TIMEOUT_MS` | `15000` | LSP request timeout in ms. Increase for large repos or slow servers. |
+| `OMQ_LSP_TIMEOUT_MS` | `15000` | LSP request timeout in ms. Increase for large repos or slow servers. |
 
 ### Troubleshooting
 
 | Problem | Solution |
 |---------|----------|
 | LSP tools not working | Install the language server: `npm install -g typescript-language-server` |
-| Timeout errors | Increase `OMC_LSP_TIMEOUT_MS` |
+| Timeout errors | Increase `OMQ_LSP_TIMEOUT_MS` |
 | Check server status | Run `lsp_servers()` to verify installation |
 
 ---
@@ -724,28 +724,28 @@ Internal skill management tools used by the runtime to load and list available s
 
 ### Tools
 
-#### `load_omc_skills_local`
+#### `load_omq_skills_local`
 
 Loads skills from the local project directory (`.omq/skills/`).
 
 ```
-load_omc_skills_local()
+load_omq_skills_local()
 ```
 
-#### `load_omc_skills_global`
+#### `load_omq_skills_global`
 
 Loads skills from the global user directory (`~/.qoder/skills/`).
 
 ```
-load_omc_skills_global()
+load_omq_skills_global()
 ```
 
-#### `list_omc_skills`
+#### `list_omq_skills`
 
 Lists all available OMQ skills (built-in + local + global).
 
 ```
-list_omc_skills()
+list_omq_skills()
 ```
 
 ---

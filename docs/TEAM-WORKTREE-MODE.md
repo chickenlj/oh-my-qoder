@@ -1,6 +1,6 @@
 # Native Team Worktree Mode
 
-Native team worktree mode is the opt-in rollout path for running `omq team` workers in dedicated git worktrees while keeping one leader-owned team-specific coordination root. It is intended for runtime-v2 team sessions and is designed to make worker edits isolated without fragmenting task, mailbox, status, or manifest state.
+Native team worktree mode is the opt-in rollout path for running team workers in dedicated git worktrees while keeping one leader-owned team-specific coordination root. It is intended for runtime-v2 team sessions and is designed to make worker edits isolated without fragmenting task, mailbox, status, or manifest state.
 
 ## Availability
 
@@ -17,10 +17,10 @@ When worktree mode is active, OMQ uses this stable layout:
 | Worktree root | `<repo>/.omq/team/<team-name>/worktrees/<worker-name>` |
 | Team-specific coordination root | `<repo>/.omq/state/team/<team-name>` in the leader workspace |
 | Worker cwd | The worker's `worktree_path` |
-| Worker coordination | `OMC_TEAM_STATE_ROOT` points back to the team-specific leader-owned coordination root |
+| Worker coordination | `OMQ_TEAM_STATE_ROOT` points back to the team-specific leader-owned coordination root |
 | Worker instructions | Worktree-root `AGENTS.md` is installed with backup/restore safeguards |
 
-Workers must keep using `omq team api ...` lifecycle and mailbox operations against the team-specific coordination root. They must not create or mutate a separate local `.omq/state` inside their worker worktree when `OMC_TEAM_STATE_ROOT` is available; for worktree-backed workers it should point at `<repo>/.omq/state/team/<team-name>`.
+Workers must keep using the `team_*` MCP tools (e.g., `team_status`, `team_mailbox`) for lifecycle and mailbox operations against the team-specific coordination root. They must not create or mutate a separate local `.omq/state` inside their worker worktree when `OMQ_TEAM_STATE_ROOT` is available; for worktree-backed workers it should point at `<repo>/.omq/state/team/<team-name>`.
 
 ## Persisted fields
 
@@ -47,11 +47,11 @@ Config, manifest, worker identity, and status surfaces should expose the same lo
 - Rollback may remove newly created clean worktrees and runtime-created branches when safe; reused worktrees are preserved.
 - `orphan-cleanup` is a destructive escape hatch that may delete worktree recovery metadata and root `AGENTS.md` backups. When that evidence exists, callers must pass `acknowledge_lost_worktree_recovery: true` only after manually preserving or intentionally discarding the affected worker worktrees/backups.
 
-## CLI and status expectations
+## Status expectations
 
-`omq team status <team-name> --json` should make the workspace contract observable. JSON consumers should be able to find `workspace_mode`, `worktree_mode`, `team_state_root`, and each worker's worktree metadata without reading private files directly.
+The `team_status` MCP tool should make the workspace contract observable. JSON consumers should be able to find `workspace_mode`, `worktree_mode`, `team_state_root`, and each worker's worktree metadata without reading private files directly.
 
-Human status output should also surface the mode and worktree path/branch details enough for users to understand where worker changes live and whether cleanup preserved a dirty worktree.
+Human-readable status output should also surface the mode and worktree path/branch details enough for users to understand where worker changes live and whether cleanup preserved a dirty worktree.
 
 ## Verification checklist for changes
 
@@ -60,10 +60,10 @@ Use the source PRD/test-spec checklist when modifying this area. At minimum, cha
 1. Worktree planning disabled/no-op and active path modes.
 2. Fresh, reused, dirty, and mismatched worktree lifecycle cases.
 3. Runtime-v2 startup/spawn state: worker cwd, env, config, manifest, and identity all agree.
-4. Bootstrap prompts and trigger paths use `$OMC_TEAM_STATE_ROOT` for worktree-backed workers.
+4. Bootstrap prompts and trigger paths use `$OMQ_TEAM_STATE_ROOT` for worktree-backed workers.
 5. Scale-up workers inherit the same team-specific coordination root and worktree instruction strategy.
 6. Shutdown/cleanup removes safe clean worktrees, preserves dirty ones, and reports warnings.
-7. CLI help/status tests cover the opt-in rollout and locked status field set.
+7. MCP tool status tests cover the opt-in rollout and locked status field set.
 
 Recommended focused commands:
 

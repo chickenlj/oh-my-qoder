@@ -1,422 +1,137 @@
 # Getting Started
 
-> Quick start guide: from installation to your first OMQ session.
+Quick-start guide for oh-my-qoder (OMQ) — a multi-agent orchestration plugin for Qoder CLI.
 
-If you're new to Oh My Qoder (OMQ), follow the steps below in order.
+---
 
-1. [Installation](#installation) - Install the OMQ plugin and run initial setup
-2. [First Session](#first-session) - Run your first task with autopilot
-3. [Configuration](#configuration) - Customize settings and agent models per project
+## Prerequisites
 
-### What this guide covers
-
-- How to install the OMQ plugin
-- Running your first autopilot session and understanding the flow
-- Configuring per-user and per-project settings
-
-### Prerequisites
-
-- [Qoder CLI](https://docs.anthropic.com/claude-code) must be installed
-- Claude Max/Pro subscription or an Anthropic API key is required
+- [Qoder CLI](https://docs.qoder.com) installed and working (`qodercli` command available)
+- Node.js 18+
+- `DASHSCOPE_API_KEY` configured (or equivalent model provider credentials)
 
 ---
 
 ## Installation
 
-OMQ ships two surfaces and they are designed to coexist:
+OMQ is installed as a local Qoder CLI plugin.
 
-| Surface | What you get | Recommended install |
-|---|---|---|
-| **Qoder CLI plugin** (`oh-my-qoder@omq`) | In-session skills, agents, hooks, statusline, MCP servers — the `/autopilot`, `/ralph`, `/ultrawork`, `/team` slash commands | Marketplace plugin install (Step 1–2 below) |
-| **Terminal CLI** (`omq` binary, package `oh-my-claude-sisyphus`) | Shell commands: `omq setup`, `omq update`, `omq team`, `omq ask`, and a hard-deprecated `omq autoresearch` shim | `npm i -g oh-my-claude-sisyphus@latest` |
-
-Most users want **both**: the plugin for the in-session experience, and the npm CLI for shell-side automation and updates. Running them in parallel is fully supported — `omq update` and `omq setup` are idempotent and detect the plugin install to avoid duplicating in-session skills (#2252).
-
-> Older versions of this doc said OMQ was "plugin-only". That was incorrect: the `omq` CLI is the canonical entry point for `omq setup`/`omq update` and is published on npm as `oh-my-claude-sisyphus`. See the [Quick Start in README.md](../README.md#quick-start) for the same two-path layout.
-
-### Step 1: Add the marketplace source
-
-Run the following command inside Qoder CLI:
+### 1. Clone and build
 
 ```bash
-/plugin marketplace add https://github.com/Yeachan-Heo/oh-my-qoder
+git clone https://github.com/anthropics/oh-my-qoder.git
+cd oh-my-qoder
+npm install
+npm run build
 ```
 
-### Step 2: Install the plugin
-
-After adding the marketplace, install the plugin:
+### 2. Install as a plugin
 
 ```bash
-/plugin install oh-my-qoder
+qodercli plugins install /path/to/oh-my-qoder
 ```
 
-### Step 2b (optional but recommended): install the terminal CLI
+After installation, restart Qoder CLI or run `/plugins reload` in TUI to load the plugin.
 
-If you want `omq setup`, `omq update`, `omq team`, `omq ask`, etc. on your shell:
+### 3. Run initial setup
 
-```bash
-npm i -g oh-my-claude-sisyphus@latest
+Inside Qoder CLI:
+
 ```
-
-> **Known npm warning:** npm may print `deprecated prebuild-install@7.1.3` during this CLI install.
-> The warning currently comes from the upstream `better-sqlite3` native-addon dependency
-> (`better-sqlite3 -> prebuild-install`); `prebuild-install@7.1.3` is still the latest
-> published version, so there is no safe repo-side dependency bump or override to remove it
-> yet. The warning is tracked in [#2913](https://github.com/Yeachan-Heo/oh-my-qoder/issues/2913)
-> and does not by itself mean the OMQ CLI install failed.
-
-Both can be installed at the same time. The CLI auto-detects the plugin install and will not double-register skills under `~/.qoder/skills/` (if you previously hit the duplicate-skill bug, run `omq update` once on 4.11.2+ — it self-heals leftover standalone skills that the plugin now provides via `prunePluginDuplicateSkills`).
-
-### Step 3: Run initial setup
-
-After installation, enter one of the following in Qoder CLI:
-
-```bash
-# Option 1: natural language
-setup omq
-
-# Option 2: skill command
 /oh-my-qoder:omq-setup
 ```
 
-### Prerequisites summary
-
-| Item | Requirement |
-|------|-------------|
-| Qoder CLI | Must be installed |
-| Authentication | Claude Max/Pro subscription or `DASHSCOPE_API_KEY` environment variable |
-
-### Choosing a setup scope
-
-#### Project-scoped setup (recommended)
-
-Applies OMQ only to the current project:
-
-```bash
-/oh-my-qoder:omq-setup --local
-```
-
-- Settings are saved to `./.qoder/CLAUDE.md`
-- No effect on other projects
-- Existing global `CLAUDE.md` is preserved
-
-#### Global setup
-
-Applies OMQ to all Qoder CLI sessions:
-
-```bash
-/oh-my-qoder:omq-setup
-```
-
-- Settings are saved to `~/.qoder/CLAUDE.md`
-- Applied across all projects
-
-> ⚠️ **Warning:** Global setup now asks explicitly before changing your base `~/.qoder/CLAUDE.md`. The default choice is still overwrite. If you choose preserve mode instead, plain `claude` stays on your base config and `omq` force-loads the OMQ companion config.
-
-### Verifying the installation
-
-To confirm everything is working, run the diagnostics tool:
-
-```bash
-/oh-my-qoder:omq-doctor
-```
-
-This checks the following:
-
-- Dependency installation status
-- Configuration file errors
-- Hook installation status
-- Agent availability
-- Skill registration status
-
-### Running from a local checkout
-
-If you're developing OMQ or want to test unreleased features from a specific branch, you can launch Qoder CLI with your local checkout as the plugin:
-
-```bash
-omq --plugin-dir /path/to/oh-my-qoder setup --plugin-dir-mode
-```
-
-This loads agents, skills, and commands directly from your checkout without copying them to `~/.qoder/`. For detailed instructions and alternative flows, see [LOCAL_PLUGIN_INSTALL.md](./LOCAL_PLUGIN_INSTALL.md). For a complete decision matrix of plugin-dir flags and modes, see the [Plugin directory flags section in REFERENCE.md](./REFERENCE.md#plugin-directory-flags).
-
-### Platform support
-
-| Platform | Installation | Hook type |
-|----------|--------------|-----------|
-| macOS | Qoder CLI Plugin | Bash (.sh) |
-| Linux | Qoder CLI Plugin | Bash (.sh) |
-| Windows | WSL2 recommended | Node.js (.mjs) |
-
-> ℹ️ **Note:** Native Windows support is experimental. OMQ requires tmux, which is not available on native Windows. Use WSL2 instead.
-
-### Updates
-
-OMQ automatically checks for updates every 24 hours. To update manually, re-run the plugin install command.
-
-> ⚠️ **Warning:** After a plugin update, run `/oh-my-qoder:omq-setup` again to apply the latest configuration.
-
-### Uninstalling
-
-```bash
-/plugin uninstall oh-my-qoder@oh-my-qoder
-```
+Or type `setup omq` in natural language.
 
 ---
 
-## First Session
+## Verification
 
-Once OMQ is installed, run your first task immediately. Open Qoder CLI and type:
+Confirm the plugin loaded:
 
-```bash
-autopilot build me a hello world app
-```
+1. Type `/skills` — you should see entries prefixed with `oh-my-qoder:` (e.g. `oh-my-qoder:autopilot`, `oh-my-qoder:team`).
+2. Run `/oh-my-qoder:omq-doctor` to check hook installation, agent availability, and MCP server status.
 
-That single line is enough for OMQ to run the full development pipeline automatically.
+---
 
-### What happens
+## First Use
 
-When OMQ detects the `autopilot` magic keyword, it starts a 5-stage pipeline:
+OMQ activates via slash commands or magic keywords.
 
-### Stage 1: Expansion
-
-The `analyst` and `architect` agents analyze the idea, clarify requirements, and produce a technical specification.
-
-### Stage 2: Planning
-
-The `planner` agent creates an execution plan. The `critic` agent reviews the plan and identifies gaps.
-
-### Stage 3: Execution
-
-The `executor` agent writes the code. Multiple agents work in parallel when needed.
-
-### Stage 4: QA
-
-Verifies that the build succeeds and tests pass. Automatically fixes failures and re-verifies.
-
-### Stage 5: Validation
-
-Specialist agents perform a final review of functionality, security, and code quality. Work is complete once all pass.
-
-### HUD status display
-
-While work is in progress, you can monitor the current state in the Qoder CLI status bar (HUD):
+### Slash commands
 
 ```
-[OMQ] autopilot:execution | agents:3 | todos:2/5 | ctx:45%
+/oh-my-qoder:autopilot build a REST API for user management
+/oh-my-qoder:team refactor the auth module
+/oh-my-qoder:ultrawork add input validation to all endpoints
 ```
 
-| Field | Meaning |
-|-------|---------|
-| `autopilot:execution` | Current stage within the autopilot pipeline |
-| `agents:3` | Number of currently active agents |
-| `todos:2/5` | Completed tasks / total tasks |
-| `ctx:45%` | Context window usage percentage |
+### Magic keywords
 
-To configure the HUD display, run:
+Type directly — no slash prefix:
 
-```bash
-/oh-my-qoder:hud setup
-```
+| Keyword | Effect |
+|---------|--------|
+| `autopilot` | Full autonomous pipeline (plan, execute, verify) |
+| `ralph` | Self-referential loop until task is done |
+| `ultrawork` / `ulw` | Parallel execution engine |
+| `ccg` | Claude-Codex-Gemini tri-model orchestration |
+| `deepsearch` | Codebase-wide search |
+| `ultrathink` | Deep reasoning mode |
+| `cancelomq` | Cancel active execution mode |
 
-### Starting smaller
+### What you get
 
-If autopilot feels too large, start with a single-task command:
-
-```bash
-# Code analysis
-analyze why this test is failing
-
-# File search
-deepsearch for files that handle authentication
-
-# Simple implementation
-ultrawork add a health check endpoint
-```
-
-These keywords invoke a single appropriate agent directly, without running the full pipeline.
-
-### Next steps
-
-- [Configuration](#configuration) - Adjust agent models and features for your project
-- [Architecture](./ARCHITECTURE.md) - Understand the relationship between agents, skills, and hooks
+- **28 agent variants** — explorer, executor, architect, planner, critic, debugger, designer, verifier, security-reviewer, test-engineer, and more
+- **38 skills** — autopilot, ralph, ultrawork, team, deep-interview, wiki, release, etc.
+- **MCP tools** — LSP integration, AST search/replace, Python REPL, team coordination, wiki, state management
+- **HUD statusline** — live progress display in Qoder CLI's status bar
 
 ---
 
 ## Configuration
 
-OMQ supports two levels of configuration files.
+### Config files
 
-| Scope | File path | Purpose |
-|-------|-----------|---------|
+| Scope | Path | Purpose |
+|-------|------|---------|
 | User (global) | `~/.config/qoder-omq/config.jsonc` | Applied to all projects |
-| Project | `.qoder/omq.jsonc` | Applied to current project only |
+| Project | `.omq-config.json` | Current project only |
 
-> ⚠️ **Warning:** The configuration file format is JSONC (JSON with comments support). It is not a TypeScript config file (`omq.config.ts`).
+Priority: Defaults < User config < Project config < Environment variables.
 
-### Configuration priority
+### Environment variables
 
-When settings exist from multiple sources, they are merged in the following order (lower entries take precedence):
+| Variable | Purpose | Example |
+|----------|---------|---------|
+| `OMQ_MODEL_HIGH` | Model for complex tasks (architect, planner) | `qwen-max` |
+| `OMQ_MODEL_MEDIUM` | Model for standard tasks (executor, debugger) | `qwen-plus` |
+| `OMQ_MODEL_LOW` | Model for quick lookups (explore, writer) | `qwen-turbo` |
+| `DISABLE_OMQ` | Kill switch — disables all OMQ hooks | `1` |
+| `OMQ_SKIP_HOOKS` | Comma-separated list of hooks to skip | `keyword-detector` |
 
-```
-Defaults → User config (~/.config/qoder-omq/config.jsonc)
-         → Project config (.qoder/omq.jsonc)
-         → Environment variables
-```
+---
 
-### Basic configuration structure
+## Development Workflow
 
-```jsonc
-{
-  // Per-agent model assignments
-  "agents": {
-    "explore": { "model": "haiku" },
-    "executor": { "model": "sonnet" },
-    "architect": { "model": "opus" }
-  },
+After editing OMQ source code:
 
-  // Feature toggles
-  "features": {
-    "parallelExecution": true,
-    "lspTools": true,
-    "astTools": true
-  },
-
-  // Magic keyword customization
-  "magicKeywords": {
-    "ultrawork": ["ultrawork", "ulw", "uw"],
-    "search": ["search", "find", "locate"],
-    "analyze": ["analyze", "investigate", "examine"],
-    "ultrathink": ["ultrathink", "think", "reason"]
-  },
-
-  // Optional prompt-level company context contract
-  "companyContext": {
-    "tool": "mcp__vendor__get_company_context",
-    "onError": "warn"
-  }
-}
+```bash
+npm run build        # Rebuild TypeScript
+# Restart Qoder CLI session to pick up changes
 ```
 
-### Company context via MCP
+Changes to skill markdown files (`skills/*/SKILL.md`) take effect on next Qoder CLI session without rebuilding.
 
-If your organization exposes internal guidance through a custom MCP server, configure the selected tool in OMQ's standard config files:
+---
 
-```jsonc
-{
-  "companyContext": {
-    "tool": "mcp__vendor__get_company_context",
-    "onError": "warn"
-  }
-}
-```
+## Troubleshooting
 
-- Register the MCP server itself through the normal Claude/OMQ MCP setup flow.
-- `tool` is the full MCP tool name.
-- `onError` controls prompt-level fallback: `warn` (default), `silent`, or `fail`.
+| Symptom | Fix |
+|---------|-----|
+| Skills don't appear in `/skills` | Run `qodercli plugins list` to verify install; restart Qoder CLI |
+| Hooks not firing | Run `/oh-my-qoder:omq-doctor`; check `DISABLE_OMQ` is not set |
+| MCP tools unavailable | Verify `.mcp.json` exists in project root; re-run `/oh-my-qoder:omq-setup` |
+| HUD not showing | Run `/oh-my-qoder:hud setup` to configure the statusline |
 
-This is an advisory workflow contract, not runtime enforcement. See [company-context-interface.md](./company-context-interface.md) for the full contract.
-
-### Overriding agent models
-
-You can change the AI model used by each agent:
-
-```jsonc
-{
-  "agents": {
-    // Upgrade explore agent to a stronger model
-    "explore": { "model": "sonnet" },
-
-    // Upgrade executor to opus for complex projects
-    "executor": { "model": "opus" },
-
-    // Cost saving: use haiku for documentation writing
-    "writer": { "model": "haiku" }
-  }
-}
-```
-
-#### Default model mapping
-
-| Agent | Default model | Role |
-|-------|--------------|------|
-| `explore` | haiku | Codebase discovery |
-| `writer` | haiku | Documentation writing |
-| `executor` | sonnet | Code implementation |
-| `debugger` | sonnet | Debugging |
-| `designer` | sonnet | UI/UX design |
-| `verifier` | sonnet | Verification |
-| `tracer` | sonnet | Evidence-driven causal tracing |
-| `security-reviewer` | sonnet | Security vulnerabilities and trust boundaries |
-| `test-engineer` | sonnet | Test strategy and coverage |
-| `qa-tester` | sonnet | Interactive CLI/service runtime validation |
-| `scientist` | sonnet | Data and statistical analysis |
-| `git-master` | sonnet | Git operations and history management |
-| `document-specialist` | sonnet | External documentation and API reference lookup |
-| `architect` | opus | System design |
-| `planner` | opus | Strategic planning |
-| `critic` | opus | Plan review |
-| `analyst` | opus | Requirements analysis |
-| `code-reviewer` | opus | Comprehensive code review |
-| `code-simplifier` | opus | Code clarity and simplification |
-
-### Customizing magic keywords
-
-You can change keywords in four categories via the `magicKeywords` section of `config.jsonc`:
-
-```jsonc
-{
-  "magicKeywords": {
-    // Triggers parallel execution mode
-    "ultrawork": ["ultrawork", "ulw", "parallel"],
-
-    // Triggers codebase search mode
-    "search": ["search", "find", "locate", "grep"],
-
-    // Triggers analysis mode
-    "analyze": ["analyze", "debug", "investigate"],
-
-    // Triggers deep reasoning mode
-    "ultrathink": ["ultrathink", "think", "reason"]
-  }
-}
-```
-
-> ℹ️ **Note:** The `magicKeywords` section in `config.jsonc` only allows customizing four categories: `ultrawork`, `search`, `analyze`, and `ultrathink`. Keywords such as `autopilot`, `ralph`, and `ccg` are hardcoded in the keyword-detector hook and cannot be changed via config files.
-
-### Model routing configuration
-
-OMQ automatically selects a model tier based on task complexity:
-
-```jsonc
-{
-  "routing": {
-    "enabled": true,
-    "defaultTier": "MEDIUM",
-    // Force all agents to inherit the parent model
-    // (auto-activated when using CC Switch, Bedrock, or Vertex AI)
-    "forceInherit": false
-  }
-}
-```
-
-| Tier | Model | Use case |
-|------|-------|----------|
-| LOW | haiku | Quick lookups, simple tasks |
-| MEDIUM | sonnet | Standard implementation, general tasks |
-| HIGH | opus | Architecture, deep analysis |
-
-### CLAUDE.md configuration
-
-OMQ's default behavior is also configured via `CLAUDE.md` files. Running `/oh-my-qoder:omq-setup` generates this file automatically.
-
-| Scope | File | Description |
-|-------|------|-------------|
-| Global | `~/.qoder/CLAUDE.md` | Shared settings across all projects |
-| Project | `.qoder/CLAUDE.md` | Per-project context and overrides |
-
-### When to re-run setup
-
-- After initial installation
-- After an OMQ update (to apply the latest configuration)
-- When switching to a different machine
-- When starting a new project (use the `--local` option)
+For deeper issues, check logs at `.omq/logs/`.
