@@ -2,7 +2,18 @@
 
 > 一个人写代码很快，一群 Agent 协作更快。oh-my-qoder 把你的 Qoder CLI 从单线程助手升级为多智能体军团。
 
-## 你遇到过这些问题吗？
+本文分为四个部分：
+
+1. **介绍** —— OMQ 解决什么问题、是什么
+2. **快速体验** —— 三分钟装好并跑通第一个任务
+3. **核心设计思路** —— 编排模式、Agent、模型路由、验证、记忆等设计细节
+4. **总结** —— 一句话回顾
+
+---
+
+## 一、介绍
+
+### 你遇到过这些问题吗？
 
 用 AI 编程助手写代码，体验很好——直到项目复杂度上来：
 
@@ -11,9 +22,9 @@
 - **缺乏验证**：代码写完就声称「完成」，不跑测试、不检查类型、不验证实际行为
 - **无法并行**：前端、后端、数据库三条线，只能串行推进
 
-这不是 AI 能力的问题，是编排的问题。
+这不是 AI 能力的问题，是**编排**的问题。
 
-## oh-my-qoder 是什么
+### oh-my-qoder 是什么
 
 oh-my-qoder（简称 OMQ）是 Qoder CLI 的多智能体编排插件。它不替换你的 AI 助手，而是把一个助手变成一支协调有序的团队。
 
@@ -24,108 +35,56 @@ oh-my-qoder（简称 OMQ）是 Qoder CLI 的多智能体编排插件。它不替
        → Agents (任务执行) → State (进度追踪)
 ```
 
-你只需用自然语言描述意图，OMQ 自动选择合适的编排模式、调度专业 Agent、管理状态流转，直到任务被验证完成。
+你只需用自然语言描述意图，OMQ 自动选择合适的编排模式、调度专业 Agent、管理状态流转，直到任务被**验证**完成。
 
-## 十大编排模式
+---
 
-这是 OMQ 的核心能力——根据任务性质选择最优执行策略：
+## 二、快速体验
 
-| 模式 | 适用场景 | 工作方式 |
-|------|----------|----------|
-| **Team** | 标准工程流程 | 分阶段流水线：plan → PRD → exec → verify → fix |
-| **Autopilot** | 端到端自动交付 | 五阶段自治执行，从分析到验证全自动 |
-| **Ralph** | 复杂重构 | 持久化自引用循环，验证通过前绝不停止 |
-| **Ultrawork** | 批量并行任务 | 最大并行度突发执行 |
-| **UltraQA** | 质量把关 | QA 循环直到所有质量门禁通过 |
-| **CCG** | 多模型交叉验证 | Codex + Gemini + Qoder 三模型综合决策 |
-| **Deep Interview** | 需求不明确 | 苏格拉底式提问，消除歧义后再动手 |
-| **RalPlan** | 架构规划 | 共识规划 + 结构化审议 |
-| **Ultragoal** | 多目标长期任务 | 持久化计划/账本，跨 session 推进 |
-| **Pipeline** | 有序多步骤 | 顺序分阶段处理 |
+### 前置要求
 
-激活方式就是打字。输入 `autopilot`、`ralph`、`team` 这些关键词，OMQ 自动识别并启动对应模式。
+- **Qoder CLI**（`qodercli`）：OMQ 编排的宿主 CLI，先安装并登录
+- **Node.js ≥ 20**、**git**：用于克隆与构建
+- **tmux**（可选）：Team / 并行 worker 能力需要（macOS/Linux 原生，Windows 用 WSL2）
 
-## 19+ 专业 Agent
+### 1. 安装
 
-OMQ 内置五大协作 Lane，覆盖软件工程全生命周期：
+OMQ 以 **Qoder CLI 插件**形式运行——它的技能、Agent、生命周期 Hook 会直接嵌入到你的 `qodercli` 会话中。Qoder CLI 从**本地目录**安装插件（安装过程不会执行 `npm`），所以先克隆并构建，再把本地目录装成插件：
 
-**构建 Lane**：explore → analyst → planner → architect → debugger → executor → verifier → tracer
+```bash
+git clone https://github.com/chickenlj/oh-my-qoder.git
+cd oh-my-qoder
+npm install
+npm run build
+qodercli plugins install "$(pwd)"
+```
 
-**审查 Lane**：code-reviewer / security-reviewer / style-reviewer / api-reviewer / performance-reviewer
+安装后重启 Qoder CLI，或在会话中执行 `/plugins reload` 使其生效。
 
-**领域 Lane**：test-engineer / designer / writer / qa-tester / scientist / git-master / document-specialist / code-simplifier
+### 2. 初始化与诊断
 
-**协调 Lane**：critic（多视角审视决策质量）
+在 Qoder CLI 会话里执行：
 
-**产品 Lane**：product-manager / ux-researcher / information-architect / product-analyst / vision
+```text
+/oh-my-qoder:omq-setup     # 生成 ~/.qoder/AGENTS.md，配置 hooks / HUD / MCP
+/oh-my-qoder:omq-doctor    # 验证安装是否正常
+```
 
-每个 Agent 有独立的工具集、模型偏好和执行约束。你不需要手动调度——编排模式会根据任务阶段自动分配。
+### 3. 一句话驱动
 
-## 50+ MCP 工具
+装好后，OMQ 完全在你的 Qoder CLI 会话里工作——Hook 会自动检测意图并注入编排。用「**关键词 + 一句话任务**」即可启动对应工作流，无需任何参数：
 
-OMQ 通过 MCP 协议暴露 11 类共 50+ 工具：
+```text
+autopilot 构建一个带测试的任务管理 REST API
+ralph 修复所有失败的测试，不通过不停
+ultrawork 给 users 和 orders 接口都加上分页
+team 3:executor 实现计费模块
+plan 为搜索服务设计一个缓存层
+```
 
-- **LSP 代码智能**（12 个）：hover、goto-definition、find-references、diagnostics、rename、code-actions 等
-- **AST Grep**：结构化代码模式匹配与替换，比正则精确一个量级
-- **状态管理**：跨模式的执行状态读写与生命周期控制
-- **项目记忆**：技术栈、构建约定、架构决策持久化存储
-- **Notepad**：优先级分层的工作记忆（priority / working / manual）
-- **Session 搜索**：跨历史会话的全文检索
-- **Python REPL**：持久化 Python 执行环境，变量跨调用保持
-- **共享内存**：跨 Agent 的键值数据传递
-- **Trace**：执行流追踪与时间线回放
-- **Skills 管理**：技能的发现、加载与注册
-- **Deepinit Manifest**：增量式代码库文档化
+### 4. 你会看到的效果
 
-## 智能模型路由
-
-OMQ 不会把所有任务都丢给最贵的模型。它按任务复杂度自动路由：
-
-- **LOW**（haiku）：文件查找、快速查询、简单格式化
-- **MEDIUM**（sonnet）：常规编码、标准重构、测试编写
-- **HIGH**（opus）：架构设计、安全审计、深度分析
-
-实测节省 30-50% token 开销，质量不降反升——因为小任务不再被大模型的过度思考拖慢。
-
-## Hooks 系统
-
-20 个 Hook 分布在 11 个生命周期事件上：
-
-- **关键词检测**：自然语言触发编排模式
-- **持久模式强制**：ralph/ultrawork 激活后，每轮注入状态提醒防止偏离
-- **Compaction 抗性记忆**：长对话压缩时保护关键上下文
-- **子 Agent 追踪**：并行 Agent 的生命周期监控
-
-## 验证协议
-
-OMQ 的验证不是可选的，是流程内置的：
-
-| 级别 | 触发条件 | 验证内容 |
-|------|----------|----------|
-| LIGHT | 简单修改 | 类型检查 + lint |
-| STANDARD | 功能开发 | 测试通过 + 行为验证 |
-| THOROUGH | 重构/安全 | 多维度证据收集 |
-
-未通过验证的任务不会被标记为完成，Agent 会自动进入修复循环。
-
-## 跨 Session 记忆
-
-项目知识通过 `.omq/project-memory.json` 和 `.omq/notepad.md` 持久化：
-
-- 技术栈偏好、构建命令、测试约定——不再每次重复
-- 架构决策历史——新 session 自动加载上下文
-- 工作记忆 7 天自动过期，优先级记忆永久保留
-
-## 41+ 技能系统
-
-技能分两层作用域：
-
-- 项目级：`.omq/skills/`（团队共享，随代码提交）
-- 用户级：`~/.omq/skills/`（个人习惯，跨项目生效）
-
-用 `/skillify` 可以把当前会话中的重复模式一键提取为可复用技能。
-
-## 实战场景
+不同关键词会触发不同的编排策略，OMQ 自动完成分析、执行到验证的全流程：
 
 ```
 你：帮我构建一个 REST API
@@ -152,38 +111,118 @@ OMQ：[ralph] 持久循环 → 逐步重构 → 测试覆盖 → 验证完成前
 OMQ：[deep-interview] 苏格拉底式提问 → 消除歧义 → 生成清晰需求文档
 ```
 
-## 安装
+> 除了显式关键词，日常说法也能触发：「build me a…」「I want a…」启动 Autopilot，「keep going」「不要停」启动 Ralph。显式关键词是最稳定的方式。
 
-**插件方式**（推荐）：通过 Qoder CLI marketplace 安装
+---
 
-**CLI 方式**：
+## 三、核心设计思路
 
-```bash
-npm i -g oh-my-qoder
-```
+理解了怎么用，我们来看 OMQ 背后「专业分工 + 流程编排 + 强制验证」是如何落地的。
 
-**初始化**：
+### 流程编排：十大编排模式
 
-```bash
-# 在 Qoder CLI 中输入
-/oh-my-qoder:omq-setup
-# 或直接说
-setup omq
-```
+这是 OMQ 的核心能力——根据任务性质选择最优执行策略：
 
-**诊断**：
+| 模式 | 适用场景 | 工作方式 |
+|------|----------|----------|
+| **Team** | 标准工程流程 | 分阶段流水线：plan → PRD → exec → verify → fix |
+| **Autopilot** | 端到端自动交付 | 五阶段自治执行，从分析到验证全自动 |
+| **Ralph** | 复杂重构 | 持久化自引用循环，验证通过前绝不停止 |
+| **Ultrawork** | 批量并行任务 | 最大并行度突发执行 |
+| **UltraQA** | 质量把关 | QA 循环直到所有质量门禁通过 |
+| **CCG** | 多模型交叉验证 | Codex + Gemini + Qoder 三模型综合决策 |
+| **Deep Interview** | 需求不明确 | 苏格拉底式提问，消除歧义后再动手 |
+| **RalPlan** | 架构规划 | 共识规划 + 结构化审议 |
+| **Ultragoal** | 多目标长期任务 | 持久化计划/账本，跨 session 推进 |
+| **Pipeline** | 有序多步骤 | 顺序分阶段处理 |
 
-```bash
-/oh-my-qoder:omq-doctor
-```
+激活方式就是打字。输入 `autopilot`、`ralph`、`team` 这些关键词，OMQ 自动识别并启动对应模式。
 
-## 写在最后
+### 专业分工：19+ 专业 Agent
+
+OMQ 内置五大协作 Lane，覆盖软件工程全生命周期：
+
+- **构建 Lane**：explore → analyst → planner → architect → debugger → executor → verifier → tracer
+- **审查 Lane**：code-reviewer / security-reviewer / style-reviewer / api-reviewer / performance-reviewer
+- **领域 Lane**：test-engineer / designer / writer / qa-tester / scientist / git-master / document-specialist / code-simplifier
+- **协调 Lane**：critic（多视角审视决策质量）
+- **产品 Lane**：product-manager / ux-researcher / information-architect / product-analyst / vision
+
+每个 Agent 有独立的工具集、模型偏好和执行约束。你不需要手动调度——编排模式会根据任务阶段自动分配。
+
+### 智能模型路由
+
+OMQ 不会把所有任务都丢给最贵的模型。它按任务复杂度自动路由：
+
+- **LOW**（轻量模型）：文件查找、快速查询、简单格式化
+- **MEDIUM**（标准模型）：常规编码、标准重构、测试编写
+- **HIGH**（高阶模型）：架构设计、安全审计、深度分析
+
+实测节省 30-50% token 开销，质量不降反升——因为小任务不再被大模型的过度思考拖慢。
+
+### 强制验证：验证协议
+
+OMQ 的验证不是可选的，是流程内置的：
+
+| 级别 | 触发条件 | 验证内容 |
+|------|----------|----------|
+| LIGHT | 简单修改 | 类型检查 + lint |
+| STANDARD | 功能开发 | 测试通过 + 行为验证 |
+| THOROUGH | 重构/安全 | 多维度证据收集 |
+
+未通过验证的任务不会被标记为完成，Agent 会自动进入修复循环。
+
+### 跨 Session 记忆
+
+项目知识通过 `.omq/project-memory.json` 和 `.omq/notepad.md` 持久化：
+
+- 技术栈偏好、构建命令、测试约定——不再每次重复
+- 架构决策历史——新 session 自动加载上下文
+- 工作记忆 7 天自动过期，优先级记忆永久保留
+
+### 扩展能力：MCP 工具
+
+OMQ 通过 MCP 协议暴露多类工具，让 Agent 具备真正的「代码智能」：
+
+- **LSP 代码智能**：hover、goto-definition、find-references、diagnostics、rename、code-actions 等
+- **AST Grep**：结构化代码模式匹配与替换，比正则精确一个量级
+- **状态管理**：跨模式的执行状态读写与生命周期控制
+- **项目记忆**：技术栈、构建约定、架构决策持久化存储
+- **Notepad**：优先级分层的工作记忆（priority / working / manual）
+- **Trace**：执行流追踪与时间线回放
+
+### 扩展能力：Hooks 系统
+
+Hook 分布在多个生命周期事件上，是「自动编排」得以发生的底层机制：
+
+- **关键词检测**：自然语言触发编排模式
+- **持久模式强制**：ralph/ultrawork 激活后，每轮注入状态提醒防止偏离
+- **Compaction 抗性记忆**：长对话压缩时保护关键上下文
+- **子 Agent 追踪**：并行 Agent 的生命周期监控
+
+### 扩展能力：技能系统
+
+技能分两层作用域：
+
+- 项目级：`.omq/skills/`（团队共享，随代码提交）
+- 用户级：`~/.omq/skills/`（个人习惯，跨项目生效）
+
+用 `/skillify` 可以把当前会话中的重复模式一键提取为可复用技能。
+
+---
+
+## 四、总结
 
 oh-my-qoder 解决的不是「AI 写不好代码」的问题，而是「如何让 AI 像工程团队一样协作」的问题。
 
-单个 AI 助手是一把好刀。OMQ 把它变成一整套厨房——每个工位各司其职，主厨（你）只需要点菜。
+单个 AI 助手是一把好刀。OMQ 把它变成一整套厨房——每个工位各司其职，主厨（你）只需要点菜：
 
-项目开源，欢迎 Star、Issue 和 PR。
+- **专业分工**：19+ Agent 各司其职
+- **流程编排**：十大模式按任务自动选择
+- **强制验证**：不通过验证不算完成
+- **持久记忆**：跨 session 不再重复交代
+
+项目开源，欢迎 Star、Issue 和 PR：<https://github.com/chickenlj/oh-my-qoder>
 
 ---
 
