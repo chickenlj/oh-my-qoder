@@ -21,8 +21,6 @@ Inspired by oh-my-opencode and oh-my-claudecode, **oh-my-qoder (OMQ)** wraps the
 - [Development](#development)
 - [License](#license)
 
----
-
 ## Requirements
 
 | Requirement | Notes |
@@ -32,8 +30,6 @@ Inspired by oh-my-opencode and oh-my-claudecode, **oh-my-qoder (OMQ)** wraps the
 | **git** | Used to clone and build from source. |
 | **tmux** *(optional)* | Needed for Team / parallel worker features. macOS/Linux native; on Windows use WSL2. |
 | **Auth** | A Qoder/Qwen login (`qodercli login`) or a `DASHSCOPE_API_KEY` environment variable. |
-
----
 
 ## Installation
 
@@ -67,8 +63,6 @@ Restart Qoder CLI, or run `/plugins reload` inside a session, to activate it.
 
 > **Updating:** `git pull`, then re-run `npm run build`, `/plugins reload`, and `/oh-my-qoder:omq-setup` to apply the latest hooks and configuration.
 
----
-
 ## Quick start
 
 1. Install and build, then register the plugin (see [Installation](#installation)).
@@ -82,8 +76,6 @@ ralph fix all failing tests, don't stop until green
 ultrawork add pagination to the users and orders endpoints
 team 3:executor implement the billing module
 ```
-
----
 
 ## Usage
 
@@ -126,8 +118,6 @@ Invoke plugin commands with the `/oh-my-qoder:<name>` prefix, e.g.:
 /oh-my-qoder:mcp-setup      /oh-my-qoder:remember
 ```
 
----
-
 ## Features
 
 - **Specialized agents** — role-based agents (explore, architect, executor, debugger, code-reviewer, test-engineer, designer, and more) with automatic model routing by task complexity.
@@ -138,8 +128,6 @@ Invoke plugin commands with the `/oh-my-qoder:<name>` prefix, e.g.:
 - **HUD statusline** — live mode/agent/todo/context display in the Qoder CLI status bar.
 - **Persistent state** — cross-session memory, notepad, and plans under `.omq/`.
 - **Commit protocol** — structured git trailers (Constraint, Rejected, Directive, Confidence, Scope-risk, Not-tested).
-
----
 
 ## Agents
 
@@ -154,8 +142,6 @@ Specialized roles the orchestrator delegates to. Each has a focused prompt and a
 
 See [`docs/agents/model-compatibility.md`](docs/agents/model-compatibility.md) and [`AGENTS.md`](AGENTS.md) for the full catalog and tiered variants.
 
----
-
 ## Skills
 
 Workflow automation invoked via magic keywords, `/oh-my-qoder:<name>`, or `$name`:
@@ -167,8 +153,6 @@ Workflow automation invoked via magic keywords, `/oh-my-qoder:<name>`, or `$name
 - **Setup / ops:** `omq-setup`, `omq-doctor`, `mcp-setup`, `hud`, `configure-notifications`, `release`
 
 Browse the full set in [`skills/`](skills/) or the [`.qoder-plugin/plugin.json`](.qoder-plugin/plugin.json) manifest.
-
----
 
 ## Model routing
 
@@ -182,8 +166,6 @@ OMQ automatically selects a model tier based on task complexity:
 
 Routing is configurable per-agent and per-project — see [Configuration](#configuration).
 
----
-
 ## State & memory
 
 Persistent state lives in the `.omq/` directory at your workspace root:
@@ -196,7 +178,6 @@ Persistent state lives in the `.omq/` directory at your workspace root:
 
 For multi-repo workspaces, drop a `.omq-workspace` marker file in the parent directory so sibling repos share one `.omq/`. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
----
 
 ## Configuration
 
@@ -214,8 +195,6 @@ You can override agent models, toggle features, and customize magic keywords. Th
 | Project | `.qoder/AGENTS.md` |
 
 See [`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md#configuration) and [`docs/settings-schema.md`](docs/settings-schema.md) for the full reference.
-
----
 
 ## Project structure
 
@@ -236,7 +215,6 @@ oh-my-qoder/
 
 > `dist/` is a build artifact and is not committed — run `npm run build` after cloning.
 
----
 
 ## Documentation
 
@@ -259,9 +237,3 @@ npm run dev       # watch-mode compile
 npm test          # run the test suite (vitest)
 npm run lint      # lint src/
 ```
-
----
-
-## License
-
-[MIT](LICENSE)
