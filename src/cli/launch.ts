@@ -27,7 +27,7 @@ import {
   buildTmuxShellCommandWithEnv,
   isNativeWindowsShell,
   wrapWithLoginShell,
-  isClaudeAvailable,
+  isQoderCliAvailable,
   isTmuxAvailable,
   quoteShellArg,
   tmuxExec,
@@ -766,7 +766,7 @@ export async function launchCommand(args: string[]): Promise<void> {
   }
 
   // Pre-flight: check qodercli availability
-  if (!isClaudeAvailable()) {
+  if (!isQoderCliAvailable()) {
     console.error('[omq] Error: qodercli not found. Install Qoder CLI first:');
     console.error('  curl -fsSL https://qoder.com/install | bash');
     process.exit(1);

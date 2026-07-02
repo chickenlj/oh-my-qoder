@@ -6,7 +6,7 @@ level: 3
 
 # Doctor Skill
 
-Note: All `~/.qoder/...` paths in this guide respect `QODER_CONFIG_DIR` when that environment variable is set.
+Note: All `[$QODER_CONFIG_DIR|~/.qoder]/...` paths in this guide respect `QODER_CONFIG_DIR` when that environment variable is set.
 
 ## Task: Run Installation Diagnostics
 
@@ -27,7 +27,7 @@ npm view oh-my-qoder version 2>/dev/null || echo "Latest: (unavailable)"
 
 ### Step 2: Check for Legacy Hooks in settings.json
 
-Read both `${QODER_CONFIG_DIR:-~/.qoder}/settings.json` (profile-level) and `./.qoder/settings.json` (project-level) and check if there's a `"hooks"` key with entries like:
+Read both `${QODER_CONFIG_DIR:-$HOME/.qoder}/settings.json` (profile-level) and `./.qoder/settings.json` (project-level) and check if there's a `"hooks"` key with entries like:
 - `bash ${QODER_CONFIG_DIR:-$HOME/.qoder}/hooks/keyword-detector.sh`
 - `bash ${QODER_CONFIG_DIR:-$HOME/.qoder}/hooks/persistent-mode.sh`
 - `bash ${QODER_CONFIG_DIR:-$HOME/.qoder}/hooks/session-start.sh`
@@ -176,7 +176,7 @@ If issues found, ask user: "Would you like me to fix these issues automatically?
 If yes, apply fixes:
 
 ### Fix: Legacy Hooks in settings.json
-Remove the `"hooks"` section from `${QODER_CONFIG_DIR:-~/.qoder}/settings.json` (keep other settings intact)
+Remove the `"hooks"` section from `${QODER_CONFIG_DIR:-$HOME/.qoder}/settings.json` (keep other settings intact)
 
 ### Fix: Legacy Bash Scripts
 ```bash
@@ -199,7 +199,7 @@ node -e "const p=require('path'),f=require('fs'),h=require('os').homedir(),d=pro
 ```
 
 ### Fix: Missing/Outdated AGENTS.md
-Fetch latest from GitHub and write to `${QODER_CONFIG_DIR:-~/.qoder}/AGENTS.md`:
+Fetch latest from GitHub and write to `${QODER_CONFIG_DIR:-$HOME/.qoder}/AGENTS.md`:
 ```
 WebFetch(url: "https://raw.githubusercontent.com/spring-ai-alibaba/oh-my-qoder/main/docs/CLAUDE.md", prompt: "Return the complete raw markdown content exactly as-is")
 ```

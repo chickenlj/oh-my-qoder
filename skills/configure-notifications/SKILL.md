@@ -43,7 +43,7 @@ Set up Telegram notifications so OMQ can message you when sessions end, need inp
 
 ### How This Skill Works
 
-This is an interactive, natural-language configuration skill. Walk the user through setup by asking questions with AskUserQuestion. Write the result to `${QODER_CONFIG_DIR:-~/.qoder}/.omq-config.json`.
+This is an interactive, natural-language configuration skill. Walk the user through setup by asking questions with AskUserQuestion. Write the result to `${QODER_CONFIG_DIR:-$HOME/.qoder}/.omq-config.json`.
 
 ### Step 1: Detect Existing Configuration
 
@@ -269,7 +269,7 @@ Set up Discord notifications so OMQ can ping you when sessions end, need input, 
 
 ### How This Skill Works
 
-This is an interactive, natural-language configuration skill. Walk the user through setup by asking questions with AskUserQuestion. Write the result to `${QODER_CONFIG_DIR:-~/.qoder}/.omq-config.json`.
+This is an interactive, natural-language configuration skill. Walk the user through setup by asking questions with AskUserQuestion. Write the result to `${QODER_CONFIG_DIR:-$HOME/.qoder}/.omq-config.json`.
 
 ### Step 1: Detect Existing Configuration
 
@@ -519,7 +519,7 @@ Set up Slack notifications so OMQ can message you when sessions end, need input,
 
 ### How This Skill Works
 
-This is an interactive, natural-language configuration skill. Walk the user through setup by asking questions with AskUserQuestion. Write the result to `${QODER_CONFIG_DIR:-~/.qoder}/.omq-config.json`.
+This is an interactive, natural-language configuration skill. Walk the user through setup by asking questions with AskUserQuestion. Write the result to `${QODER_CONFIG_DIR:-$HOME/.qoder}/.omq-config.json`.
 
 ### Step 1: Detect Existing Configuration
 
@@ -792,7 +792,7 @@ If the trigger or argument contains "hook", "template", or "customize messages" 
 
 ### Step 1: Detect Existing Hook Config
 
-Check if `${QODER_CONFIG_DIR:-~/.qoder}/omq_config.hook.json` exists. If it does, show the current configuration. If not, explain what it does.
+Check if `${QODER_CONFIG_DIR:-$HOME/.qoder}/omq_config.hook.json` exists. If it does, show the current configuration. If not, explain what it does.
 
 ```
 Hook event templates let you customize the notification messages sent to each platform.
@@ -879,7 +879,7 @@ If per-platform: ask for each enabled platform's template separately.
 
 ### Step 6: Write Configuration
 
-Read or create `${QODER_CONFIG_DIR:-~/.qoder}/omq_config.hook.json` and merge the new settings:
+Read or create `${QODER_CONFIG_DIR:-$HOME/.qoder}/omq_config.hook.json` and merge the new settings:
 
 ```json
 {

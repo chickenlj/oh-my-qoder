@@ -10,7 +10,7 @@ This is the **only command you need to learn**. After running this, everything e
 
 **When this skill is invoked, immediately execute the workflow below. Do not only restate or summarize these instructions back to the user.**
 
-Note: All `~/.qoder/...` paths in this guide respect `QODER_CONFIG_DIR` when that environment variable is set.
+Note: All `[$QODER_CONFIG_DIR|~/.qoder]/...` paths in this guide respect `QODER_CONFIG_DIR` when that environment variable is set.
 
 ## Best-Fit Use
 

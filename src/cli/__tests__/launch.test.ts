@@ -31,7 +31,7 @@ vi.mock('../tmux-utils.js', () => ({
   isNativeWindowsShell: vi.fn(() => false),
   wrapWithLoginShell: vi.fn((cmd: string) => cmd),
   quoteShellArg: vi.fn((s: string) => s),
-  isClaudeAvailable: vi.fn(() => true),
+  isQoderCliAvailable: vi.fn(() => true),
   isTmuxAvailable: vi.fn(() => true),
   tmuxExec: vi.fn(),
 }));

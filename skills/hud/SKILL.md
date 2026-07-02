@@ -11,7 +11,7 @@ level: 2
 
 Configure the OMQ HUD (Heads-Up Display) for the statusline.
 
-Note: All `~/.qoder/...` paths in this guide respect `QODER_CONFIG_DIR` when that environment variable is set.
+Note: All `[$QODER_CONFIG_DIR|~/.qoder]/...` paths in this guide respect `QODER_CONFIG_DIR` when that environment variable is set.
 
 ## Quick Commands
 
@@ -64,7 +64,7 @@ node -e "if(process.platform==='win32'){console.log('Skipped (Windows)')}else{re
 
 **Step 5:** Update settings.json to use the HUD:
 
-Read `${QODER_CONFIG_DIR:-~/.qoder}/settings.json`, then update/add the `statusLine` field.
+Read `${QODER_CONFIG_DIR:-$HOME/.qoder}/settings.json`, then update/add the `statusLine` field.
 
 **IMPORTANT:** Do not use `~` in the command. On Unix, use `$HOME` to keep the path portable across machines. On Windows, use an absolute path because Windows does not expand `~` in shell commands.
 
@@ -238,7 +238,7 @@ If the HUD is not showing:
 2. Restart Qoder CLI after setup completes
 3. If still not working, run `/oh-my-qoder:omq-doctor` for full diagnostics
 
-**Legacy string format migration:** Older OMQ versions wrote `statusLine` as a plain string (e.g., `"~/.qoder/hud/omq-hud.mjs"`). Modern Qoder CLI (v2.1+) requires an object format. Running the installer or `/oh-my-qoder:hud setup` will auto-migrate legacy strings to the correct object format:
+**Legacy string format migration:** Older OMQ versions wrote `statusLine` as a plain string pointing at the default HUD script. Modern Qoder CLI (v2.1+) requires an object format. Running the installer or `/oh-my-qoder:hud setup` will auto-migrate legacy strings to the correct object format:
 ```json
 {
   "statusLine": {

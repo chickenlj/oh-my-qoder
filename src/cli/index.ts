@@ -105,7 +105,7 @@ async function defaultAction() {
   const args = process.argv.slice(2);
 
   // Defensive fallback: wrapper/bridge invocations must preserve explicit ask routing
-  // so nested Qoder launch checks only apply to actual Claude launches.
+  // so nested Qoder launch checks only apply to actual Qoder launches.
   if (args[0] === 'ask') {
     await askCommand(args.slice(1));
     return;

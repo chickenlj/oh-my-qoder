@@ -60,10 +60,10 @@ describe('OMQ_PLUGIN_ROOT tmux env forwarding', () => {
 /**
  * End-to-end env-propagation tests for `launchCommand`.
  *
- * We mock `child_process.execFileSync` so that any spawn of `claude` captures
+   * We mock `child_process.execFileSync` so that any spawn of `qodercli` captures
  * the parent `process.env` snapshot at call time, then throws to short-circuit
- * the rest of `runClaude`. We also mock `./tmux-utils.js` so the launch policy
- * is forced to `direct` (no tmux dependency) and `claude` is reported as
+   * the rest of `runQoder`. We also mock `./tmux-utils.js` so the launch policy
+   * is forced to `direct` (no tmux dependency) and `qodercli` is reported as
  * available. QODER_CONFIG_DIR is pointed at a throwaway tmpdir so
  * `prepareOmqLaunchConfigDir` short-circuits cheaply.
  *
@@ -81,16 +81,16 @@ vi.mock('child_process', async () => {
   return {
     ...actual,
     execFileSync: vi.fn((file: string, _args?: readonly string[], options?: { env?: NodeJS.ProcessEnv }) => {
-      if (file === 'qwen') {
+      if (file === 'qodercli') {
         // execFileSync inherits parent env when options.env is undefined,
         // so the source of truth is process.env at call time.
         capturedEnv = { ...(options?.env ?? process.env) };
-        const err: NodeJS.ErrnoException & { __omq?: symbol } = new Error('mocked claude exit');
+        const err: NodeJS.ErrnoException & { __omq?: symbol } = new Error('mocked qodercli exit');
         err.__omq = SHORTCIRCUIT;
         // Throwing aborts runClaude/launchCommand cleanly via the try/finally.
         throw err;
       }
-      // Allow non-claude execFileSync calls (e.g. tmux probes) to be no-ops.
+      // Allow non-qodercli execFileSync calls (e.g. tmux probes) to be no-ops.
       return Buffer.alloc(0);
     }),
   };
@@ -100,7 +100,7 @@ vi.mock('../tmux-utils.js', async () => {
   const actual = await vi.importActual<typeof import('../tmux-utils.js')>('../tmux-utils.js');
   return {
     ...actual,
-    isClaudeAvailable: () => true,
+    isQoderCliAvailable: () => true,
     resolveLaunchPolicy: () => 'direct' as const,
   };
 });

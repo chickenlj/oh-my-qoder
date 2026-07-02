@@ -197,7 +197,7 @@ function getConfiguredAgentModel(name: string, config: PluginConfig): string | u
  */
 
 /**
- * Get all agent definitions as a record for use with Claude Agent SDK
+ * Get all agent definitions as a record for use with Qoder Agent SDK
  */
 export function getAgentDefinitions(options?: {
   overrides?: Partial<Record<string, Partial<AgentConfig>>>;

@@ -54,7 +54,7 @@ else
 fi
 ```
 
-Then use the Read tool to read `${QODER_CONFIG_DIR:-~/.qoder}/settings.json` (if it exists). Use the Edit tool to merge the teams configuration while preserving ALL existing settings.
+Then use the Read tool to read `${QODER_CONFIG_DIR:-$HOME/.qoder}/settings.json` (if it exists). Use the Edit tool to merge the teams configuration while preserving ALL existing settings.
 
 Use jq to safely merge without overwriting existing settings:
 

@@ -2,9 +2,8 @@
  * Regression test: skill markdown files must use a config-dir env fallback
  *
  * Ensures that bash code blocks in skill files never hardcode $HOME/.qoder
- * without a ${QODER_CONFIG_DIR:-...} or legacy ${QODER_CONFIG_DIR:-...}
- * fallback. This prevents skills from ignoring the user's custom config
- * directory.
+ * without a ${QODER_CONFIG_DIR:-...} fallback. This prevents skills from
+ * ignoring the user's custom config directory.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -43,7 +42,6 @@ function extractBashBlocks(filePath: string): { startLine: number; content: stri
 
 /**
  * Find lines in bash blocks that use $HOME/.qoder without the
- * ${QODER_CONFIG_DIR:-$HOME/.qoder} or legacy
  * ${QODER_CONFIG_DIR:-$HOME/.qoder} pattern.
  */
 function findHardcodedHomeQoder(filePath: string): { line: number; text: string }[] {
@@ -57,7 +55,7 @@ function findHardcodedHomeQoder(filePath: string): { line: number; text: string 
       // Match $HOME/.qoder that is NOT inside a config-dir fallback.
       if (
         /\$HOME\/\.qoder/.test(line)
-        && !/\$\{(?:QODER_CONFIG_DIR|QODER_CONFIG_DIR):-\$HOME\/\.qoder\}/.test(line)
+        && !/\$\{QODER_CONFIG_DIR:-\$HOME\/\.qoder\}/.test(line)
       ) {
         violations.push({
           line: block.startLine + i,
@@ -99,17 +97,14 @@ function findHardcodedTildeQoder(filePath: string): { line: number; text: string
     const line = lines[i];
     // Match ~/.qoder (tilde form) used in prose/tool directives
     if (!/~\/\.qoder/.test(line)) continue;
-    // Allow: portable notation [$QODER_CONFIG_DIR|~/.qoder] and legacy notation.
-    if (/\[\$(?:QODER_CONFIG_DIR|QODER_CONFIG_DIR)\|~\/\.qoder\]/.test(line)) continue;
-    // Allow: env-var fallback ${QODER_CONFIG_DIR:-...} and legacy fallback.
-    if (/\$\{(?:QODER_CONFIG_DIR|QODER_CONFIG_DIR):-/.test(line)) continue;
-    // Allow: lines inside bash code blocks (covered by the other test)
+    // Allow: portable notation [$QODER_CONFIG_DIR|~/.qoder].
+    if (/\[\$QODER_CONFIG_DIR\|~\/\.qoder\]/.test(line)) continue;
+    // Env-var fallbacks must use $HOME, not a literal tilde default.
+    // Lines inside bash code blocks are checked here too for literal tilde paths.
     // Allow: comment lines and frontmatter
     const trimmed = line.trim();
     if (trimmed.startsWith('#') && !trimmed.startsWith('##')) continue; // frontmatter/comments
     if (trimmed.startsWith('<!--') && trimmed.endsWith('-->')) continue;
-    // Allow: lines that mention config-dir env vars (explaining the config dir system)
-    if (/(QODER_CONFIG_DIR|QODER_CONFIG_DIR)/i.test(line)) continue;
     // Allow: glob patterns like ~/.qoder/** (permission patterns, not path resolution)
     if (/~\/\.qoder\/\*/.test(line)) continue;
 
