@@ -54,7 +54,7 @@ Notify user if a newer version is available:
 # Detect installed version (cross-platform)
 node -e "
 const p=require('path'),f=require('fs'),h=require('os').homedir();
-const d=process.env.CLAUDE_CONFIG_DIR||p.join(h,'.claude');
+const d=process.env.QODER_CONFIG_DIR||p.join(h,'.qoder');
 let v='';
 // Try cache directory first
 const b=p.join(d,'plugins','cache','omc','oh-my-qoder');
@@ -67,7 +67,7 @@ console.log('Installed:',v||'(not found)');
 "
 
 # Check npm for latest version
-LATEST_VERSION=$(npm view oh-my-claude-sisyphus version 2>/dev/null)
+LATEST_VERSION=$(npm view oh-my-qoder version 2>/dev/null)
 
 if [ -n "$INSTALLED_VERSION" ] && [ -n "$LATEST_VERSION" ]; then
   if [ "$INSTALLED_VERSION" != "$LATEST_VERSION" ]; then
@@ -76,7 +76,7 @@ if [ -n "$INSTALLED_VERSION" ] && [ -n "$LATEST_VERSION" ]; then
     echo "  Installed: v$INSTALLED_VERSION"
     echo "  Latest:    v$LATEST_VERSION"
     echo ""
-    echo "To update, run: claude /install-plugin oh-my-qoder"
+    echo "To update, run: qodercli plugins install oh-my-qoder"
   else
     echo "You're on the latest version: v$INSTALLED_VERSION"
   fi
@@ -97,7 +97,7 @@ Use the AskUserQuestion tool to prompt the user:
 Store the preference in `~/.qoder/.omc-config.json`:
 
 ```bash
-CONFIG_FILE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.omc-config.json"
+CONFIG_FILE="${QODER_CONFIG_DIR:-$HOME/.qoder}/.omc-config.json"
 mkdir -p "$(dirname "$CONFIG_FILE")"
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -150,17 +150,17 @@ If `OMC_CLI_INSTALLED` is `"false"`, use AskUserQuestion:
 **Question:** "Would you like to install the OMC CLI globally for standalone helper commands? (`omc`, `omc hud`, `omc teleport`)"
 
 **Options:**
-1. **Yes (Recommended)** - Install `oh-my-claude-sisyphus` via `npm install -g`
-2. **No - Skip** - Skip installation (can install manually later with `npm install -g oh-my-claude-sisyphus`)
+1. **Yes (Recommended)** - Install `oh-my-qoder` via `npm install -g`
+2. **No - Skip** - Skip installation (can install manually later with `npm install -g oh-my-qoder`)
 
 If user chooses **Yes**:
 
 ```bash
 if ! command -v npm &>/dev/null; then
   echo "WARNING: npm not found. Cannot install OMC CLI automatically."
-  echo "Install Node.js/npm first, then run: npm install -g oh-my-claude-sisyphus"
+  echo "Install Node.js/npm first, then run: npm install -g oh-my-qoder"
 else
-  if npm install -g oh-my-claude-sisyphus 2>&1; then
+  if npm install -g oh-my-qoder 2>&1; then
     echo "OMC CLI installed successfully."
     if command -v omc &>/dev/null; then
       OMC_CLI_VERSION=$(omc --version 2>/dev/null | head -1 || echo "installed")
@@ -170,8 +170,8 @@ else
     fi
   else
     echo "WARNING: Failed to install OMC CLI (permission issue or network error)."
-    echo "You can install manually later: npm install -g oh-my-claude-sisyphus"
-    echo "Or with sudo: sudo npm install -g oh-my-claude-sisyphus"
+    echo "You can install manually later: npm install -g oh-my-qoder"
+    echo "Or with sudo: sudo npm install -g oh-my-qoder"
   fi
 fi
 ```
@@ -220,7 +220,7 @@ If beads or beads-rust is detected, use AskUserQuestion:
 Store the preference:
 
 ```bash
-CONFIG_FILE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.omc-config.json"
+CONFIG_FILE="${QODER_CONFIG_DIR:-$HOME/.qoder}/.omc-config.json"
 mkdir -p "$(dirname "$CONFIG_FILE")"
 
 if ! command -v jq >/dev/null 2>&1; then

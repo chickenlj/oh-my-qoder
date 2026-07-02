@@ -136,13 +136,13 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
     try {
       const sourceRoot = join(tempRoot, 'source');
       const targetRoot = join(tempRoot, 'cache', 'omq', 'oh-my-qoder', '4.14.1');
-      mkdirSync(join(sourceRoot, '.claude-plugin'), { recursive: true });
+      mkdirSync(join(sourceRoot, '.qoder-plugin'), { recursive: true });
       mkdirSync(join(sourceRoot, 'commands'), { recursive: true });
       mkdirSync(join(sourceRoot, 'dist', 'hooks'), { recursive: true });
       mkdirSync(join(sourceRoot, 'bridge'), { recursive: true });
       mkdirSync(join(sourceRoot, 'hooks'), { recursive: true });
       mkdirSync(join(sourceRoot, 'skills', 'plan'), { recursive: true });
-      writeFileSync(join(sourceRoot, '.claude-plugin', 'plugin.json'), JSON.stringify({
+      writeFileSync(join(sourceRoot, '.qoder-plugin', 'plugin.json'), JSON.stringify({
         name: 'oh-my-qoder',
         commands: './commands/',
         skills: ['./skills/plan/'],
@@ -160,7 +160,7 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
       expect(result.synced).toBe(true);
 
       const manifest = JSON.parse(
-        readFileSync(join(targetRoot, '.claude-plugin', 'plugin.json'), 'utf-8')
+        readFileSync(join(targetRoot, '.qoder-plugin', 'plugin.json'), 'utf-8')
       ) as { commands?: string; skills?: string[] };
       expect(manifest.commands).toBe('./commands/');
       expect(manifest.skills).toEqual(['./skills/plan/']);

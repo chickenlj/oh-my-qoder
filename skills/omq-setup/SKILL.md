@@ -10,14 +10,14 @@ This is the **only command you need to learn**. After running this, everything e
 
 **When this skill is invoked, immediately execute the workflow below. Do not only restate or summarize these instructions back to the user.**
 
-Note: All `~/.qoder/...` paths in this guide respect `CLAUDE_CONFIG_DIR` when that environment variable is set.
+Note: All `[$QODER_CONFIG_DIR|~/.qoder]/...` paths in this guide respect `QODER_CONFIG_DIR` when that environment variable is set.
 
 ## Best-Fit Use
 
 Choose this setup flow when the user wants to **install, refresh, or repair OMQ itself**.
 
 - Marketplace/plugin install users should land here after `/plugin install oh-my-qoder`
-- npm users should land here after `npm i -g oh-my-claude-sisyphus@latest`
+- npm users should land here after `npm i -g oh-my-qoder@latest`
 - local-dev and worktree users should land here after updating the checked-out repo and rerunning setup
 
 ## Flag Parsing
@@ -79,7 +79,7 @@ EXAMPLES:
   /oh-my-qoder:omq-setup --global  # Update all projects
   /oh-my-qoder:omq-setup --force   # Re-run full setup wizard
 
-For more info: https://github.com/Yeachan-Heo/oh-my-qoder
+For more info: https://github.com/spring-ai-alibaba/oh-my-qoder
 ```
 
 
@@ -88,7 +88,7 @@ For more info: https://github.com/Yeachan-Heo/oh-my-qoder
 Before running setup shell commands or reading phase files, resolve the current OMQ plugin root. This prevents an already-running Qoder CLI session from continuing to use a stale `QODER_PLUGIN_ROOT` after `/plugin marketplace update omq` installs a newer cache version.
 
 ```bash
-OMQ_SETUP_PLUGIN_ROOT=$(node -e "const f=require('fs'),p=require('path'),h=require('os').homedir(),d=(process.env.CLAUDE_CONFIG_DIR||p.join(h,'.qoder')).replace(/[\\/]+$/,''),b=p.join(d,'plugins','cache','omq','oh-my-qoder'),valid=r=>f.existsSync(p.join(r,'skills','omq-setup','SKILL.md'))||f.existsSync(p.join(r,'hooks','hooks.json'))||f.existsSync(p.join(r,'docs','CLAUDE.md'));try{const vs=f.readdirSync(b,{withFileTypes:true}).filter(e=>(e.isDirectory()||e.isSymbolicLink())&&/^\d+\.\d+\.\d+/.test(e.name)).map(e=>e.name).sort((a,c)=>c.localeCompare(a,void 0,{numeric:true}));const hit=vs.map(v=>p.join(b,v)).find(valid);if(hit)console.log(hit);else if(process.env.QODER_PLUGIN_ROOT)console.log(process.env.QODER_PLUGIN_ROOT)}catch{if(process.env.QODER_PLUGIN_ROOT)console.log(process.env.QODER_PLUGIN_ROOT)}")
+OMQ_SETUP_PLUGIN_ROOT=$(node -e "const f=require('fs'),p=require('path'),h=require('os').homedir(),d=(process.env.QODER_CONFIG_DIR||p.join(h,'.qoder')).replace(/[\\/]+$/,''),b=p.join(d,'plugins','cache','omq','oh-my-qoder'),valid=r=>f.existsSync(p.join(r,'skills','omq-setup','SKILL.md'))||f.existsSync(p.join(r,'hooks','hooks.json'))||f.existsSync(p.join(r,'docs','CLAUDE.md'));try{const vs=f.readdirSync(b,{withFileTypes:true}).filter(e=>(e.isDirectory()||e.isSymbolicLink())&&/^\d+\.\d+\.\d+/.test(e.name)).map(e=>e.name).sort((a,c)=>c.localeCompare(a,void 0,{numeric:true}));const hit=vs.map(v=>p.join(b,v)).find(valid);if(hit)console.log(hit);else if(process.env.QODER_PLUGIN_ROOT)console.log(process.env.QODER_PLUGIN_ROOT)}catch{if(process.env.QODER_PLUGIN_ROOT)console.log(process.env.QODER_PLUGIN_ROOT)}")
 export OMQ_SETUP_PLUGIN_ROOT
 ```
 
@@ -104,7 +104,7 @@ node "${OMQ_SETUP_PLUGIN_ROOT:-${QODER_PLUGIN_ROOT}}/scripts/repair-plugin-cache
 
 ```bash
 # Check if setup was already completed
-CONFIG_FILE="${CLAUDE_CONFIG_DIR:-$HOME/.qoder}/.omq-config.json"
+CONFIG_FILE="${QODER_CONFIG_DIR:-$HOME/.qoder}/.omq-config.json"
 
 if [ -f "$CONFIG_FILE" ]; then
   SETUP_COMPLETED=$(jq -r '.setupCompleted // empty' "$CONFIG_FILE" 2>/dev/null)
@@ -133,8 +133,8 @@ Use AskUserQuestion to prompt:
 
 **If user chooses "Update AGENTS.md only":**
 - Detect if local (.qoder/AGENTS.md) or global (~/.qoder/AGENTS.md) config exists
-- If local exists, run: `bash "${OMQ_SETUP_PLUGIN_ROOT:-${QODER_PLUGIN_ROOT}}/scripts/setup-claude-md.sh" local`
-- If only global exists, run: `bash "${OMQ_SETUP_PLUGIN_ROOT:-${QODER_PLUGIN_ROOT}}/scripts/setup-claude-md.sh" global`
+- If local exists, run: `bash "${OMQ_SETUP_PLUGIN_ROOT:-${QODER_PLUGIN_ROOT}}/scripts/setup-agents-md.sh" local`
+- If only global exists, run: `bash "${OMQ_SETUP_PLUGIN_ROOT:-${QODER_PLUGIN_ROOT}}/scripts/setup-agents-md.sh" global`
 - Skip all other steps
 - Report success and exit
 
@@ -172,13 +172,13 @@ bash "${OMQ_SETUP_PLUGIN_ROOT:-${QODER_PLUGIN_ROOT}}/scripts/setup-progress.sh" 
 ## Phase Execution
 
 ### For `--local` or `--global` flags:
-Read the file at `${OMQ_SETUP_PLUGIN_ROOT:-${QODER_PLUGIN_ROOT}}/skills/omq-setup/phases/01-install-claude-md.md` and follow its instructions.
+Read the file at `${OMQ_SETUP_PLUGIN_ROOT:-${QODER_PLUGIN_ROOT}}/skills/omq-setup/phases/01-install-agents-md.md` and follow its instructions.
 (The phase file handles early exit for flag mode.)
 
 ### For full setup (default or --force):
 Execute phases sequentially. For each phase, read the corresponding file and follow its instructions:
 
-1. **Phase 1 - Install AGENTS.md**: Read `${OMQ_SETUP_PLUGIN_ROOT:-${QODER_PLUGIN_ROOT}}/skills/omq-setup/phases/01-install-claude-md.md` and follow its instructions.
+1. **Phase 1 - Install AGENTS.md**: Read `${OMQ_SETUP_PLUGIN_ROOT:-${QODER_PLUGIN_ROOT}}/skills/omq-setup/phases/01-install-agents-md.md` and follow its instructions.
 
 2. **Phase 2 - Environment Configuration**: Read `${OMQ_SETUP_PLUGIN_ROOT:-${QODER_PLUGIN_ROOT}}/skills/omq-setup/phases/02-configure.md` and follow its instructions. Phase 2 must delegate HUD/statusLine setup to the `hud` skill; do not generate or patch `statusLine` paths inline here.
 

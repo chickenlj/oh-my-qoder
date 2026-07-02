@@ -113,7 +113,7 @@ async function main() {
   } catch { /* fall through to next resolution step */ }
 
   // 2. Plugin cache (for production installs)
-  // Respect CLAUDE_CONFIG_DIR so installs under a custom config dir are found
+  // Respect QODER_CONFIG_DIR so installs under a custom config dir are found
   const configDir = getClaudeConfigDir();
   const pluginCacheBase = join(configDir, "plugins", "cache", "omq", "oh-my-qoder");
   if (existsSync(pluginCacheBase)) {
@@ -213,7 +213,6 @@ async function main() {
   // Tests can disable this fallback to avoid host-global package nondeterminism.
   if (process.env.OMC_HUD_DISABLE_NPM_FALLBACK !== "1") {
     const npmHudPackages = [
-      "oh-my-claude-sisyphus/dist/hud/index.js",
       "oh-my-qoder/dist/hud/index.js",
     ];
     for (const hudPackage of npmHudPackages) {

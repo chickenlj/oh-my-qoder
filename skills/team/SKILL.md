@@ -842,7 +842,7 @@ See Cancellation section below for details.
 
 If the lead crashes mid-run, the team skill should detect existing state and resume:
 
-1. Check `${CLAUDE_CONFIG_DIR:-~/.qoder}/teams/` for teams matching the task slug
+1. Check `${QODER_CONFIG_DIR:-$HOME/.qoder}/teams/` for teams matching the task slug
 2. If found, read `config.json` to discover active members
 3. Resume monitor mode instead of creating a duplicate team
 4. Call `team_task_list` to determine current progress

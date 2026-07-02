@@ -5,7 +5,7 @@
 Check if user has existing 2.x configuration:
 
 ```bash
-ls "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/commands/ralph-loop.md 2>/dev/null || ls "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/commands/ultrawork.md 2>/dev/null
+ls "${QODER_CONFIG_DIR:-$HOME/.qoder}"/commands/ralph-loop.md 2>/dev/null || ls "${QODER_CONFIG_DIR:-$HOME/.qoder}"/commands/ultrawork.md 2>/dev/null
 ```
 
 If found, this is an upgrade from 2.x. Set `IS_UPGRADE=true`.
@@ -134,7 +134,7 @@ gh auth status &>/dev/null
 **Before prompting, check if the repository is already starred:**
 
 ```bash
-gh api user/starred/Yeachan-Heo/oh-my-qoder &>/dev/null
+gh api user/starred/spring-ai-alibaba/oh-my-qoder &>/dev/null
 ```
 
 **If already starred (exit code 0):**
@@ -155,7 +155,7 @@ Use AskUserQuestion:
 If user chooses "Yes, star it!":
 
 ```bash
-gh api -X PUT /user/starred/Yeachan-Heo/oh-my-qoder 2>/dev/null && echo "Thanks for starring!" || true
+gh api -X PUT /user/starred/spring-ai-alibaba/oh-my-qoder 2>/dev/null && echo "Thanks for starring!" || true
 ```
 
 **Note:** Fail silently if the API call doesn't work - never block setup completion.
@@ -165,7 +165,7 @@ gh api -X PUT /user/starred/Yeachan-Heo/oh-my-qoder 2>/dev/null && echo "Thanks 
 ```bash
 echo ""
 echo "If you enjoy oh-my-qoder, consider starring the repo:"
-echo "  https://github.com/Yeachan-Heo/oh-my-qoder"
+echo "  https://github.com/spring-ai-alibaba/oh-my-qoder"
 echo ""
 ```
 
@@ -178,8 +178,8 @@ Get the current OMQ version and mark setup complete:
 OMQ_VERSION=""
 if [ -f ".qoder/AGENTS.md" ]; then
   OMQ_VERSION=$(grep -m1 'OMQ:VERSION:' .qoder/AGENTS.md 2>/dev/null | sed -E 's/.*OMQ:VERSION:([^ ]+).*/\1/' || true)
-elif [ -f "${CLAUDE_CONFIG_DIR:-$HOME/.qoder}/AGENTS.md" ]; then
-  OMQ_VERSION=$(grep -m1 'OMQ:VERSION:' "${CLAUDE_CONFIG_DIR:-$HOME/.qoder}/AGENTS.md" 2>/dev/null | sed -E 's/.*OMQ:VERSION:([^ ]+).*/\1/' || true)
+elif [ -f "${QODER_CONFIG_DIR:-$HOME/.qoder}/AGENTS.md" ]; then
+  OMQ_VERSION=$(grep -m1 'OMQ:VERSION:' "${QODER_CONFIG_DIR:-$HOME/.qoder}/AGENTS.md" 2>/dev/null | sed -E 's/.*OMQ:VERSION:([^ ]+).*/\1/' || true)
 fi
 if [ -z "$OMQ_VERSION" ]; then
   OMQ_VERSION=$(omq --version 2>/dev/null | head -1 || true)

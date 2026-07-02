@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# setup-claude-md.sh - Unified OMQ instruction-file download/merge script
-# Usage: setup-claude-md.sh <local|global> [overwrite|preserve]
+# setup-agents-md.sh - Unified OMQ instruction-file download/merge script
+# Usage: setup-agents-md.sh <local|global> [overwrite|preserve]
 #
-# Source content lives in docs/CLAUDE.md (carries OMQ markers); it is installed
+# Source content currently lives in docs/CLAUDE.md (carries OMQ markers); it is installed
 # to the host instruction file AGENTS.md (the file qodercli loads).
 # Handles: version extraction, backup, download, marker stripping, merge, version reporting.
 # For global mode, defaults to overwrite; preserve mode keeps the user's base
@@ -10,9 +10,9 @@
 
 set -euo pipefail
 
-MODE="${1:?Usage: setup-claude-md.sh <local|global> [overwrite|preserve]}"
+MODE="${1:?Usage: setup-agents-md.sh <local|global> [overwrite|preserve]}"
 INSTALL_STYLE="${2:-overwrite}"
-DOWNLOAD_URL="https://raw.githubusercontent.com/Yeachan-Heo/oh-my-qoder/main/docs/CLAUDE.md"
+DOWNLOAD_URL="https://raw.githubusercontent.com/spring-ai-alibaba/oh-my-qoder/main/docs/CLAUDE.md"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 . "$SCRIPT_DIR/lib/config-dir.sh"
@@ -91,7 +91,7 @@ resolve_active_plugin_root() {
 }
 
 ACTIVE_PLUGIN_ROOT="$(resolve_active_plugin_root)"
-CANONICAL_CLAUDE_MD="${ACTIVE_PLUGIN_ROOT}/docs/CLAUDE.md"
+CANONICAL_AGENTS_SOURCE="${ACTIVE_PLUGIN_ROOT}/docs/CLAUDE.md"
 CANONICAL_OMQ_REFERENCE_SKILL="${ACTIVE_PLUGIN_ROOT}/skills/omq-reference/SKILL.md"
 
 ensure_local_omq_git_exclude() {
@@ -206,7 +206,7 @@ if [ -f "$TARGET_PATH" ]; then
 fi
 
 # Load canonical OMQ content to temp file
-TEMP_OMQ=$(mktemp /tmp/omq-claude-XXXXXX.md)
+TEMP_OMQ=$(mktemp /tmp/omq-agents-XXXXXX.md)
 trap 'rm -f "$TEMP_OMQ"' EXIT
 
 OMQ_IMPORT_START='<!-- OMQ:IMPORT:START -->'
@@ -259,9 +259,9 @@ ensure_not_symlink_path() {
 VALIDATION_PATH="$TARGET_PATH"
 
 SOURCE_LABEL=""
-if [ -f "$CANONICAL_CLAUDE_MD" ]; then
-  cp "$CANONICAL_CLAUDE_MD" "$TEMP_OMQ"
-  SOURCE_LABEL="$CANONICAL_CLAUDE_MD"
+if [ -f "$CANONICAL_AGENTS_SOURCE" ]; then
+  cp "$CANONICAL_AGENTS_SOURCE" "$TEMP_OMQ"
+  SOURCE_LABEL="$CANONICAL_AGENTS_SOURCE"
 elif [ -n "${QODER_PLUGIN_ROOT:-}" ] && [ -f "${QODER_PLUGIN_ROOT}/docs/CLAUDE.md" ]; then
   cp "${QODER_PLUGIN_ROOT}/docs/CLAUDE.md" "$TEMP_OMQ"
   SOURCE_LABEL="${QODER_PLUGIN_ROOT}/docs/CLAUDE.md"
@@ -271,15 +271,15 @@ else
 fi
 
 if [ ! -s "$TEMP_OMQ" ]; then
-  echo "ERROR: Failed to download CLAUDE.md. Aborting."
+  echo "ERROR: Failed to download AGENTS.md source. Aborting."
   echo "FALLBACK: Manually download from: $DOWNLOAD_URL"
   rm -f "$TEMP_OMQ"
   exit 1
 fi
 
 if ! grep -q '<!-- OMQ:START -->' "$TEMP_OMQ" || ! grep -q '<!-- OMQ:END -->' "$TEMP_OMQ"; then
-  echo "ERROR: Canonical CLAUDE.md source is missing required OMQ markers: $SOURCE_LABEL" >&2
-  echo "Refusing to install a summarized or malformed CLAUDE.md." >&2
+  echo "ERROR: Canonical AGENTS.md source is missing required OMQ markers: $SOURCE_LABEL" >&2
+  echo "Refusing to install a summarized or malformed AGENTS.md source." >&2
   exit 1
 fi
 
@@ -430,5 +430,5 @@ fi
 if [ -f "$CONFIG_DIR/settings.json" ] && grep -q "oh-my-qoder" "$CONFIG_DIR/settings.json"; then
   echo "Plugin verified"
 else
-  echo "Plugin NOT found - run: claude /install-plugin oh-my-qoder"
+  echo "Plugin NOT found - run: qodercli plugins install oh-my-qoder"
 fi

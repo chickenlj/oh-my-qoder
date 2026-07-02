@@ -198,8 +198,8 @@ describe('HUD marketplace resolution', () => {
     const npmRoot = process.platform === 'win32'
       ? join(npmPrefix, 'node_modules')
       : join(npmPrefix, 'lib', 'node_modules');
-    // Use oh-my-claude-sisyphus since the template tries that package name first
-    const npmPackageRoot = join(npmRoot, 'oh-my-claude-sisyphus');
+    // Use oh-my-qoder since the template tries that package name first
+    const npmPackageRoot = join(npmRoot, 'oh-my-qoder');
     const npmHudDir = join(npmPackageRoot, 'dist', 'hud');
     mkdirSync(npmHudDir, { recursive: true });
     writeFileSync(join(npmPackageRoot, 'package.json'), '{"type":"module"}\n');
@@ -240,16 +240,16 @@ describe('HUD marketplace resolution', () => {
     expect(readFileSync(sentinelPath, 'utf-8')).toBe('global-prefix-loaded');
   });
 
-  it('omq-hud.mjs loads the published npm package name before the branded fallback', () => {
+  it('omq-hud.mjs loads the published npm package name', () => {
     const configDir = mkdtempSync(join(tmpdir(), 'omq-hud-npm-package-'));
     tempDirs.push(configDir);
 
     const fakeHome = join(configDir, 'home');
     mkdirSync(fakeHome, { recursive: true });
 
-    // Use oh-my-claude-sisyphus since the template tries that package first
+    // Use oh-my-qoder since the template tries that package first
     const sentinelPath = join(configDir, 'npm-package-loaded.txt');
-    const npmPackageRoot = join(configDir, 'node_modules', 'oh-my-claude-sisyphus');
+    const npmPackageRoot = join(configDir, 'node_modules', 'oh-my-qoder');
     const npmHudDir = join(npmPackageRoot, 'dist', 'hud');
     mkdirSync(npmHudDir, { recursive: true });
     writeFileSync(join(npmPackageRoot, 'package.json'), '{"type":"module"}\n');
@@ -272,7 +272,7 @@ describe('HUD marketplace resolution', () => {
     expect(existsSync(hudScriptPath)).toBe(true);
 
     const content = readFileSync(hudScriptPath, 'utf-8');
-    expect(content).toContain('"oh-my-claude-sisyphus/dist/hud/index.js"');
+    expect(content).toContain('"oh-my-qoder/dist/hud/index.js"');
 
     // Patch config-dir.mjs to alias getClaudeConfigDir (template uses legacy name)
     const configDirMjs = join(configDir, 'hud', 'lib', 'config-dir.mjs');

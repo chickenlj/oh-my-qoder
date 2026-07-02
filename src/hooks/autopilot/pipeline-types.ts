@@ -5,7 +5,7 @@
  * The pipeline unifies autopilot/ultrawork/ultrapilot into a single
  * configurable sequence: RALPLAN -> EXECUTION -> RALPH -> QA.
  *
- * @see https://github.com/Yeachan-Heo/oh-my-qoder/issues/1130
+ * @see https://github.com/spring-ai-alibaba/oh-my-qoder/issues/1130
  */
 
 // ============================================================================

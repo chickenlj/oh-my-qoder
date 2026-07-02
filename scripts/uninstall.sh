@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Oh-My-ClaudeCode Uninstaller
+# Oh-My-Qoder Uninstaller
 # Completely removes all OMQ-installed files and configurations
 
 set -e
@@ -10,13 +10,13 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-echo -e "${BLUE}Oh-My-ClaudeCode Uninstaller${NC}"
+echo -e "${BLUE}Oh-My-Qoder Uninstaller${NC}"
 echo ""
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/lib/config-dir.sh"
 
-# Qoder CLI config directory (defaults to ~/.claude)
+# Qoder CLI config directory (defaults to ~/.qoder)
 QODER_CONFIG_DIR="$(resolve_claude_config_dir)"
 
 echo "This will remove ALL OMQ components from:"
@@ -165,7 +165,7 @@ echo ""
 echo -e "${GREEN}Uninstallation complete!${NC}"
 echo ""
 echo -e "${YELLOW}Items NOT removed (manual cleanup if desired):${NC}"
-echo "  - CLAUDE.md: rm $QODER_CONFIG_DIR/CLAUDE.md"
+echo "  - AGENTS.md: rm $QODER_CONFIG_DIR/AGENTS.md"
 echo "  - settings.json backup: rm $QODER_CONFIG_DIR/settings.json.bak"
 echo ""
 echo "To verify complete removal, check:"

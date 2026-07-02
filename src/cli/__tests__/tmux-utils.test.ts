@@ -24,7 +24,7 @@ import {
   buildTmuxShellCommand,
   buildTmuxShellCommandWithEnv,
   createHudWatchPane,
-  isClaudeAvailable,
+  isQoderCliAvailable,
   killTmuxPane,
   listHudWatchPaneIdsInCurrentWindow,
   resolveLaunchPolicy,
@@ -168,13 +168,13 @@ describe('resolveLaunchPolicy', () => {
   });
 });
 
-describe('isClaudeAvailable', () => {
+describe('isQoderCliAvailable', () => {
   it('uses shell:true on win32 so npm .cmd wrappers resolve', () => {
     const originalPlatform = process.platform;
     Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
     mockedExecFileSync.mockReturnValue(Buffer.from('2.1.116'));
 
-    expect(isClaudeAvailable()).toBe(true);
+    expect(isQoderCliAvailable()).toBe(true);
     expect(mockedExecFileSync).toHaveBeenCalledWith('qodercli', ['--version'], {
       stdio: 'ignore',
       shell: true,

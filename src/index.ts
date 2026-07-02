@@ -1,7 +1,7 @@
 /**
- * Oh-My-ClaudeCode
+ * Oh-My-Qoder
  *
- * A multi-agent orchestration system for the Claude Agent SDK.
+ * A multi-agent orchestration system for the Qoder Agent SDK.
  * Inspired by oh-my-opencode, reimagined for Qoder CLI.
  *
  * Main features:
@@ -248,7 +248,7 @@ export interface OmqSession {
  * Create a OMQ orchestration session
  *
  * This prepares all the configuration and options needed
- * to run a query with the Claude Agent SDK.
+ * to run a query with the Qoder Agent SDK.
  *
  * @example
  * ```typescript
@@ -257,7 +257,7 @@ export interface OmqSession {
  *
  * const session = createOmqSession();
  *
- * // Use with Claude Agent SDK
+ * // Use with Qoder Agent SDK
  * for await (const message of query({
  *   prompt: session.processPrompt("ultrawork refactor the authentication module"),
  *   ...session.queryOptions

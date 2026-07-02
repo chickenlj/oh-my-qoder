@@ -194,8 +194,8 @@ function canonicalizeExistingPath(value: string): string {
   }
 }
 
-function isDefaultClaudeConfigDirPath(configDir: string): boolean {
-  return normalizePath(configDir) === normalizePath(join(homedir(), '.claude'));
+function isDefaultQoderConfigDirPath(configDir: string): boolean {
+  return normalizePath(configDir) === normalizePath(join(homedir(), '.qoder'));
 }
 
 function quoteShellArg(value: string): string {
@@ -215,19 +215,19 @@ function buildStatusLineCommand(
   const normalizedHudScriptPath = hudScriptPath.replace(/\\/g, '/');
 
   if (cacheWrapperPath) {
-    if (isDefaultClaudeConfigDirPath(QODER_CONFIG_DIR)) {
-      return 'sh ${QODER_CONFIG_DIR:-$HOME/.claude}/hud/omq-hud-cache.sh ${QODER_CONFIG_DIR:-$HOME/.claude}/hud/omq-hud.mjs';
+    if (isDefaultQoderConfigDirPath(QODER_CONFIG_DIR)) {
+      return 'sh ${QODER_CONFIG_DIR:-$HOME/.qoder}/hud/omq-hud-cache.sh ${QODER_CONFIG_DIR:-$HOME/.qoder}/hud/omq-hud.mjs';
     }
 
     return `sh ${quoteShellArg(cacheWrapperPath.replace(/\\/g, '/'))} ${quoteShellArg(normalizedHudScriptPath)}`;
   }
 
-  if (isDefaultClaudeConfigDirPath(QODER_CONFIG_DIR)) {
+  if (isDefaultQoderConfigDirPath(QODER_CONFIG_DIR)) {
     if (findNodePath) {
-      return 'sh ${QODER_CONFIG_DIR:-$HOME/.claude}/hud/find-node.sh ${QODER_CONFIG_DIR:-$HOME/.claude}/hud/omq-hud.mjs';
+      return 'sh ${QODER_CONFIG_DIR:-$HOME/.qoder}/hud/find-node.sh ${QODER_CONFIG_DIR:-$HOME/.qoder}/hud/omq-hud.mjs';
     }
 
-    return 'node ${QODER_CONFIG_DIR:-$HOME/.claude}/hud/omq-hud.mjs';
+    return 'node ${QODER_CONFIG_DIR:-$HOME/.qoder}/hud/omq-hud.mjs';
   }
 
   if (findNodePath) {

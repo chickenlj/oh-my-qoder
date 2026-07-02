@@ -519,7 +519,7 @@ describe('Builtin Skills', () => {
       expect(raw).toContain('Phase 0 below remains blocking');
       expect(raw).toContain('must resolve `omq.deepInterview.ambiguityThreshold` from settings');
       expect(raw).toContain('Phase 0: Resolve Ambiguity Threshold (blocking prerequisite)');
-      expect(raw).toContain('User settings: `[$CLAUDE_CONFIG_DIR|~/.qoder]/settings.json`');
+      expect(raw).toContain('User settings: `[$QODER_CONFIG_DIR|~/.qoder]/settings.json`');
       expect(raw).toContain('Project settings: `./.qoder/settings.json`');
       expect(raw).toContain('"threshold": <resolvedThreshold>,');
       expect(raw).toContain('"threshold_source": "<resolvedThresholdSource>",');
@@ -646,7 +646,7 @@ describe('Builtin Skills', () => {
       const raw = readFileSync(join(originalCwd, 'skills', 'deep-dive', 'SKILL.md'), 'utf-8');
 
       expect(raw).toContain('Load runtime settings');
-      expect(raw).toContain('Read `[$CLAUDE_CONFIG_DIR|~/.qoder]/settings.json` and `./.qoder/settings.json`');
+      expect(raw).toContain('Read `[$QODER_CONFIG_DIR|~/.qoder]/settings.json` and `./.qoder/settings.json`');
       expect(raw).toContain('Resolve `omq.deepInterview.ambiguityThreshold` into `<resolvedThreshold>`');
       expect(raw).toContain('"threshold": <resolvedThreshold>,');
       expect(raw).toContain('Gate: <=<resolvedThresholdPercent> ambiguity');

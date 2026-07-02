@@ -2,7 +2,7 @@
  * Tool Registry and MCP Server Creation
  *
  * This module exports all custom tools and provides helpers
- * for creating MCP servers with the Claude Agent SDK.
+ * for creating MCP servers with the Qoder Agent SDK.
  */
 
 import { z } from 'zod';
@@ -55,7 +55,7 @@ export function createZodSchema<T extends z.ZodRawShape>(schema: T): z.ZodObject
 }
 
 /**
- * Format for creating tools compatible with Claude Agent SDK
+ * Format for creating tools compatible with Qoder Agent SDK
  */
 export interface SdkToolFormat {
   name: string;

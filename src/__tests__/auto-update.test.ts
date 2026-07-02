@@ -99,7 +99,7 @@ describe('auto-update reconciliation', () => {
     });
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-qoder', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized.includes('.omq-version.json')) {
@@ -332,7 +332,7 @@ describe('auto-update reconciliation', () => {
 
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-qoder', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized.includes('.omq-version.json')) {
@@ -354,7 +354,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized.endsWith('/plugins/installed_plugins.json')) {
@@ -397,7 +397,7 @@ describe('auto-update reconciliation', () => {
 
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-qoder', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized.endsWith('/plugins/installed_plugins.json')) {
@@ -411,7 +411,7 @@ describe('auto-update reconciliation', () => {
     });
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized.endsWith('/plugins/installed_plugins.json') || normalized === activeRoot.replace(/\\/g, '/')) {
@@ -437,7 +437,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized.endsWith('/plugins/installed_plugins.json')) {
@@ -468,7 +468,7 @@ describe('auto-update reconciliation', () => {
     });
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-qoder', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized === '/usr/lib/node_modules/oh-my-qoder/package.json') {
@@ -517,7 +517,7 @@ describe('auto-update reconciliation', () => {
     });
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-qoder', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/oh-my-qoder/package.json') {
@@ -562,7 +562,7 @@ describe('auto-update reconciliation', () => {
     });
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-qoder', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized === '/usr/lib/node_modules/oh-my-qoder/package.json') {
@@ -607,7 +607,7 @@ describe('auto-update reconciliation', () => {
     });
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-qoder', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized === '/usr/lib/node_modules/oh-my-qoder/package.json') {
@@ -625,7 +625,7 @@ describe('auto-update reconciliation', () => {
     });
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized === `${versionedCacheRoot.replace(/\\/g, '/')}/dist/hooks/skill-bridge.cjs`) {
@@ -659,7 +659,7 @@ describe('auto-update reconciliation', () => {
 
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-qoder', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized === '/usr/lib/node_modules/oh-my-qoder/package.json') {
@@ -677,7 +677,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized === cacheRoot) {
@@ -686,7 +686,7 @@ describe('auto-update reconciliation', () => {
       if (normalized.startsWith('/usr/lib/node_modules/oh-my-qoder/')) {
         return normalized.endsWith('/dist')
           || normalized.endsWith('/package.json')
-          || normalized.endsWith('/.claude-plugin/plugin.json')
+          || normalized.endsWith('/.qoder-plugin/plugin.json')
           || normalized.endsWith('/dist/hooks/skill-bridge.cjs')
           || normalized.endsWith('/bridge/cli.cjs')
           || normalized.endsWith('/hooks/hooks.json')
@@ -724,7 +724,7 @@ describe('auto-update reconciliation', () => {
     const cacheRoot = join(QODER_CONFIG_DIR, 'plugins', 'cache', 'omq', 'oh-my-qoder');
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized === cacheRoot) {
@@ -754,7 +754,7 @@ describe('auto-update reconciliation', () => {
 
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-qoder', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized === '/usr/lib/node_modules/oh-my-qoder/package.json') {
@@ -772,7 +772,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized === cacheRoot) {
@@ -781,7 +781,7 @@ describe('auto-update reconciliation', () => {
       if (normalized.startsWith('/usr/lib/node_modules/oh-my-qoder/')) {
         return normalized.endsWith('/dist')
           || normalized.endsWith('/package.json')
-          || normalized.endsWith('/.claude-plugin/plugin.json')
+          || normalized.endsWith('/.qoder-plugin/plugin.json')
           || normalized.endsWith('/dist/hooks/skill-bridge.cjs')
           || normalized.endsWith('/bridge/cli.cjs')
           || normalized.endsWith('/hooks/hooks.json')
@@ -838,7 +838,7 @@ describe('auto-update reconciliation', () => {
 
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-qoder', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized.includes('.omq-version.json')) {
@@ -863,7 +863,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized.endsWith('/plugins/installed_plugins.json')) {
@@ -922,7 +922,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized === pluginRoot.replace(/\\/g, '/')) {
@@ -963,10 +963,10 @@ describe('auto-update reconciliation', () => {
     let claudeCodePackageCheckCount = 0;
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
-      if (normalized === '/usr/lib/node_modules/@qoder-ai/qoder-cli/package.json') {
+      if (normalized === '/usr/lib/node_modules/@qoder-ai/qodercli/package.json') {
         claudeCodePackageCheckCount += 1;
         return claudeCodePackageCheckCount === 1 || claudeCodePackageCheckCount === 3;
       }
@@ -981,10 +981,10 @@ describe('auto-update reconciliation', () => {
 
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-qoder', commands: './commands/', skills: ['./skills/plan/'] });
       }
-      if (normalized === '/usr/lib/node_modules/@qoder-ai/qoder-cli/package.json') {
+      if (normalized === '/usr/lib/node_modules/@qoder-ai/qodercli/package.json') {
         return JSON.stringify({ version: '1.2.3' });
       }
       if (normalized.includes('.omq-version.json')) {
@@ -1008,7 +1008,7 @@ describe('auto-update reconciliation', () => {
     });
 
     mockedExecFileSync.mockImplementation((command: string, args?: readonly string[]) => {
-      if (command === 'npm' && args?.join(' ') === 'install -g @qoder-ai/qoder-cli@1.2.3') {
+      if (command === 'npm' && args?.join(' ') === 'install -g @qoder-ai/qodercli@1.2.3') {
         return '';
       }
       throw new Error(`Unexpected execFileSync command: ${command} ${args?.join(' ') ?? ''}`);
@@ -1018,9 +1018,9 @@ describe('auto-update reconciliation', () => {
       const result = await performUpdate({ verbose: true });
 
       expect(result.success).toBe(true);
-      expect(mockedExecFileSync).toHaveBeenCalledWith('npm', ['install', '-g', '@qoder-ai/qoder-cli@1.2.3'], expect.any(Object));
-      expect(consoleLogSpy).toHaveBeenCalledWith('[omq update] Restoring global @qoder-ai/qoder-cli@1.2.3 after npm update...');
-      expect(consoleLogSpy).toHaveBeenCalledWith('[omq update] Restored global @qoder-ai/qoder-cli');
+      expect(mockedExecFileSync).toHaveBeenCalledWith('npm', ['install', '-g', '@qoder-ai/qodercli@1.2.3'], expect.any(Object));
+      expect(consoleLogSpy).toHaveBeenCalledWith('[omq update] Restoring global @qoder-ai/qodercli@1.2.3 after npm update...');
+      expect(consoleLogSpy).toHaveBeenCalledWith('[omq update] Restored global @qoder-ai/qodercli');
     } finally {
       consoleLogSpy.mockRestore();
     }
@@ -1044,10 +1044,10 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
-      if (normalized === '/usr/lib/node_modules/@qoder-ai/qoder-cli/package.json') {
+      if (normalized === '/usr/lib/node_modules/@qoder-ai/qodercli/package.json') {
         return false;
       }
       if (normalized.endsWith('/plugins/marketplaces/omq')) {
@@ -1072,8 +1072,8 @@ describe('auto-update reconciliation', () => {
     const result = await performUpdate({ verbose: false });
 
     expect(result.success).toBe(true);
-    expect(mockedExecSync).not.toHaveBeenCalledWith('npm install -g @qoder-ai/qoder-cli@latest', expect.any(Object));
-    expect(mockedExecFileSync).not.toHaveBeenCalledWith('npm', ['install', '-g', expect.stringContaining('@qoder-ai/qoder-cli@')], expect.any(Object));
+    expect(mockedExecSync).not.toHaveBeenCalledWith('npm install -g @qoder-ai/qodercli@latest', expect.any(Object));
+    expect(mockedExecFileSync).not.toHaveBeenCalledWith('npm', ['install', '-g', expect.stringContaining('@qoder-ai/qodercli@')], expect.any(Object));
   });
 
   it('does not install global Qoder CLI when pre-update detection is unknown', async () => {
@@ -1094,7 +1094,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized.endsWith('/plugins/marketplaces/omq')) {
@@ -1124,7 +1124,7 @@ describe('auto-update reconciliation', () => {
     const result = await performUpdate({ verbose: false });
 
     expect(result.success).toBe(true);
-    expect(mockedExecFileSync).not.toHaveBeenCalledWith('npm', ['install', '-g', expect.stringContaining('@qoder-ai/qoder-cli@')], expect.any(Object));
+    expect(mockedExecFileSync).not.toHaveBeenCalledWith('npm', ['install', '-g', expect.stringContaining('@qoder-ai/qodercli@')], expect.any(Object));
   });
 
   it('restores global Qoder CLI when post-update detection is unknown after a known pre-update install', async () => {
@@ -1145,10 +1145,10 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
-      if (normalized === '/usr/lib/node_modules/@qoder-ai/qoder-cli/package.json') {
+      if (normalized === '/usr/lib/node_modules/@qoder-ai/qodercli/package.json') {
         return true;
       }
       if (normalized.endsWith('/plugins/marketplaces/omq')) {
@@ -1163,10 +1163,10 @@ describe('auto-update reconciliation', () => {
     let claudeCodeReadCount = 0;
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-qoder', commands: './commands/', skills: ['./skills/plan/'] });
       }
-      if (normalized === '/usr/lib/node_modules/@qoder-ai/qoder-cli/package.json') {
+      if (normalized === '/usr/lib/node_modules/@qoder-ai/qodercli/package.json') {
         claudeCodeReadCount += 1;
         if (claudeCodeReadCount === 2) {
           throw new Error('cannot read package after update');
@@ -1194,7 +1194,7 @@ describe('auto-update reconciliation', () => {
     });
 
     mockedExecFileSync.mockImplementation((command: string, args?: readonly string[]) => {
-      if (command === 'npm' && args?.join(' ') === 'install -g @qoder-ai/qoder-cli@1.2.3') {
+      if (command === 'npm' && args?.join(' ') === 'install -g @qoder-ai/qodercli@1.2.3') {
         return '';
       }
       throw new Error(`Unexpected execFileSync command: ${command} ${args?.join(' ') ?? ''}`);
@@ -1203,7 +1203,7 @@ describe('auto-update reconciliation', () => {
     const result = await performUpdate({ verbose: false });
 
     expect(result.success).toBe(true);
-    expect(mockedExecFileSync).toHaveBeenCalledWith('npm', ['install', '-g', '@qoder-ai/qoder-cli@1.2.3'], expect.any(Object));
+    expect(mockedExecFileSync).toHaveBeenCalledWith('npm', ['install', '-g', '@qoder-ai/qodercli@1.2.3'], expect.any(Object));
   });
 
   it('detects native Windows Qoder CLI via claude --version and does not attempt npm restore', async () => {
@@ -1225,10 +1225,10 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
-      if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/@qoder-ai/qoder-cli/package.json') {
+      if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/@qoder-ai/qodercli/package.json') {
         return false;
       }
       if (normalized.endsWith('/plugins/marketplaces/omq')) {
@@ -1270,8 +1270,8 @@ describe('auto-update reconciliation', () => {
     expect(mockedExecFileSync).toHaveBeenCalledWith('where.exe', ['qodercli'], expect.objectContaining({
       windowsHide: true,
     }));
-    expect(mockedExecSync).not.toHaveBeenCalledWith('npm install -g @qoder-ai/qoder-cli@2.1.142', expect.any(Object));
-    expect(mockedExecFileSync).not.toHaveBeenCalledWith('npm', ['install', '-g', expect.stringContaining('@qoder-ai/qoder-cli@')], expect.any(Object));
+    expect(mockedExecSync).not.toHaveBeenCalledWith('npm install -g @qoder-ai/qodercli@2.1.142', expect.any(Object));
+    expect(mockedExecFileSync).not.toHaveBeenCalledWith('npm', ['install', '-g', expect.stringContaining('@qoder-ai/qodercli@')], expect.any(Object));
   });
 
   it('treats unknown Qoder CLI detection as non-restorable during Windows updates', async () => {
@@ -1293,10 +1293,10 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
-      if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/@qoder-ai/qoder-cli/package.json') {
+      if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/@qoder-ai/qodercli/package.json') {
         return false;
       }
       if (normalized.endsWith('/plugins/marketplaces/omq')) {
@@ -1332,8 +1332,8 @@ describe('auto-update reconciliation', () => {
       shell: true,
       windowsHide: true,
     }));
-    expect(mockedExecSync).not.toHaveBeenCalledWith('npm install -g @qoder-ai/qoder-cli@latest', expect.any(Object));
-    expect(mockedExecFileSync).not.toHaveBeenCalledWith('npm', ['install', '-g', expect.stringContaining('@qoder-ai/qoder-cli@')], expect.any(Object));
+    expect(mockedExecSync).not.toHaveBeenCalledWith('npm install -g @qoder-ai/qodercli@latest', expect.any(Object));
+    expect(mockedExecFileSync).not.toHaveBeenCalledWith('npm', ['install', '-g', expect.stringContaining('@qoder-ai/qodercli@')], expect.any(Object));
   });
 
   it('uses Windows-safe npm options when restoring global Qoder CLI', async () => {
@@ -1356,10 +1356,10 @@ describe('auto-update reconciliation', () => {
     let claudeCodePackageCheckCount = 0;
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
-      if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/@qoder-ai/qoder-cli/package.json') {
+      if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/@qoder-ai/qodercli/package.json') {
         claudeCodePackageCheckCount += 1;
         return claudeCodePackageCheckCount === 1 || claudeCodePackageCheckCount === 3;
       }
@@ -1374,10 +1374,10 @@ describe('auto-update reconciliation', () => {
 
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-qoder', commands: './commands/', skills: ['./skills/plan/'] });
       }
-      if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/@qoder-ai/qoder-cli/package.json') {
+      if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/@qoder-ai/qodercli/package.json') {
         return JSON.stringify({ version: '1.2.3' });
       }
       if (normalized.includes('.omq-version.json')) {
@@ -1397,7 +1397,7 @@ describe('auto-update reconciliation', () => {
       if (command === 'npm install -g oh-my-qoder@latest') {
         return '';
       }
-      if (command === 'npm install -g @qoder-ai/qoder-cli@1.2.3') {
+      if (command === 'npm install -g @qoder-ai/qodercli@1.2.3') {
         return '';
       }
       throw new Error(`Unexpected execSync command: ${command}`);
@@ -1406,10 +1406,10 @@ describe('auto-update reconciliation', () => {
     const result = await performUpdate({ verbose: false });
 
     expect(result.success).toBe(true);
-    expect(mockedExecSync).toHaveBeenCalledWith('npm install -g @qoder-ai/qoder-cli@1.2.3', expect.objectContaining({
+    expect(mockedExecSync).toHaveBeenCalledWith('npm install -g @qoder-ai/qodercli@1.2.3', expect.objectContaining({
       windowsHide: true,
     }));
-    expect(mockedExecFileSync).not.toHaveBeenCalledWith('npm', ['install', '-g', '@qoder-ai/qoder-cli@1.2.3'], expect.any(Object));
+    expect(mockedExecFileSync).not.toHaveBeenCalledWith('npm', ['install', '-g', '@qoder-ai/qodercli@1.2.3'], expect.any(Object));
   });
 
   it('runs reconciliation as part of performUpdate without plugin hook reinjection', async () => {
@@ -1671,10 +1671,10 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
-      if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/@qoder-ai/qoder-cli/package.json') {
+      if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/@qoder-ai/qodercli/package.json') {
         return false;
       }
       if (normalized.endsWith('/plugins/marketplaces/omq')) {
@@ -1744,7 +1744,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized.endsWith('/plugins/marketplaces/omq')) {

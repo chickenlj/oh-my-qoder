@@ -74,12 +74,12 @@ If this raw bundled skill is loaded by Qoder CLI's native plugin skill loader th
 Complete this phase before Phase 1, before brownfield exploration, before `state_write`, before Round 0, and before any ambiguity scoring. Do not continue if the resolved threshold and source are unknown.
 
 1. **Read threshold settings in precedence order**:
-   - User settings: `[$CLAUDE_CONFIG_DIR|~/.qoder]/settings.json`
+   - User settings: `[$QODER_CONFIG_DIR|~/.qoder]/settings.json`
    - Project settings: `./.qoder/settings.json` (overrides user settings)
 2. **Resolve threshold and source**:
    - Read `omq.deepInterview.ambiguityThreshold` from both files when present.
    - Use the project value when valid; otherwise use the user value when valid; otherwise use the default `0.2`.
-   - Set these run variables exactly: `<resolvedThreshold>`, `<resolvedThresholdPercent>`, and `<resolvedThresholdSource>` (for example `./.qoder/settings.json`, `[$CLAUDE_CONFIG_DIR|~/.qoder]/settings.json`, or `default`).
+   - Set these run variables exactly: `<resolvedThreshold>`, `<resolvedThresholdPercent>`, and `<resolvedThresholdSource>` (for example `./.qoder/settings.json`, `[$QODER_CONFIG_DIR|~/.qoder]/settings.json`, or `default`).
 3. **Emit the required first line to the user before any other interview announcement**:
 
 ```

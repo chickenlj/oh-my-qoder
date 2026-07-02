@@ -40,7 +40,7 @@ describe('omq-doctor skill package version diagnostic (issue #2981)', () => {
     const skillPath = join(process.cwd(), 'skills', 'omq-doctor', 'SKILL.md');
     const content = readFileSync(skillPath, 'utf8');
 
-    expect(content).toContain('npm view oh-my-claude-sisyphus version');
-    expect(content).not.toContain('npm view oh-my-qoder version');
+    expect(content).toContain('npm view oh-my-qoder version');
+    expect(content).not.toMatch(/npm view oh-my-(?!qoder\b)[\w-]+ version/);
   });
 });

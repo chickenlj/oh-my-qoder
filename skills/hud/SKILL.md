@@ -11,7 +11,7 @@ level: 2
 
 Configure the OMQ HUD (Heads-Up Display) for the statusline.
 
-Note: All `~/.qoder/...` paths in this guide respect `CLAUDE_CONFIG_DIR` when that environment variable is set.
+Note: All `[$QODER_CONFIG_DIR|~/.qoder]/...` paths in this guide respect `QODER_CONFIG_DIR` when that environment variable is set.
 
 ## Quick Commands
 
@@ -38,18 +38,18 @@ When you run `/oh-my-qoder:hud` or `/oh-my-qoder:hud setup`, the system will aut
 
 **Step 1:** Check if setup is needed:
 ```bash
-node -e "const p=require('path'),f=require('fs'),d=process.env.CLAUDE_CONFIG_DIR||p.join(require('os').homedir(),'.qoder');console.log(f.existsSync(p.join(d,'hud','omq-hud.mjs'))?'EXISTS':'MISSING')"
+node -e "const p=require('path'),f=require('fs'),d=process.env.QODER_CONFIG_DIR||p.join(require('os').homedir(),'.qoder');console.log(f.existsSync(p.join(d,'hud','omq-hud.mjs'))?'EXISTS':'MISSING')"
 ```
 
 **Step 2:** Verify the plugin is installed:
 ```bash
-node -e "const p=require('path'),f=require('fs'),d=process.env.CLAUDE_CONFIG_DIR||p.join(require('os').homedir(),'.qoder'),b=p.join(d,'plugins','cache','omq','oh-my-qoder');try{const v=f.readdirSync(b).filter(x=>/^\d/.test(x)).sort((a,c)=>a.localeCompare(c,void 0,{numeric:true}));if(v.length===0){console.log('Plugin not installed - run: /plugin install oh-my-qoder');process.exit()}const l=v[v.length-1],h=p.join(b,l,'dist','hud','index.js');console.log('Version:',l);console.log(f.existsSync(h)?'READY':'NOT_FOUND - try reinstalling: /plugin install oh-my-qoder')}catch{console.log('Plugin not installed - run: /plugin install oh-my-qoder')}"
+node -e "const p=require('path'),f=require('fs'),d=process.env.QODER_CONFIG_DIR||p.join(require('os').homedir(),'.qoder'),b=p.join(d,'plugins','cache','omq','oh-my-qoder');try{const v=f.readdirSync(b).filter(x=>/^\d/.test(x)).sort((a,c)=>a.localeCompare(c,void 0,{numeric:true}));if(v.length===0){console.log('Plugin not installed - run: /plugin install oh-my-qoder');process.exit()}const l=v[v.length-1],h=p.join(b,l,'dist','hud','index.js');console.log('Version:',l);console.log(f.existsSync(h)?'READY':'NOT_FOUND - try reinstalling: /plugin install oh-my-qoder')}catch{console.log('Plugin not installed - run: /plugin install oh-my-qoder')}"
 ```
 
 **Step 3:** If omq-hud.mjs is MISSING or argument is `setup`, install the HUD wrapper and its dependency from the canonical template:
 
 ```bash
-HUD_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.qoder}/hud"
+HUD_DIR="${QODER_CONFIG_DIR:-$HOME/.qoder}/hud"
 mkdir -p "$HUD_DIR/lib"
 cp "${QODER_PLUGIN_ROOT}/scripts/lib/hud-wrapper-template.txt" "$HUD_DIR/omq-hud.mjs"
 cp "${QODER_PLUGIN_ROOT}/scripts/lib/config-dir.mjs" "$HUD_DIR/lib/config-dir.mjs"
@@ -59,12 +59,12 @@ cp "${QODER_PLUGIN_ROOT}/scripts/lib/config-dir.mjs" "$HUD_DIR/lib/config-dir.mj
 
 **Step 4:** Make it executable (Unix only, skip on Windows):
 ```bash
-node -e "if(process.platform==='win32'){console.log('Skipped (Windows)')}else{require('fs').chmodSync(require('path').join(process.env.CLAUDE_CONFIG_DIR||require('path').join(require('os').homedir(),'.qoder'),'hud','omq-hud.mjs'),0o755);console.log('Done')}"
+node -e "if(process.platform==='win32'){console.log('Skipped (Windows)')}else{require('fs').chmodSync(require('path').join(process.env.QODER_CONFIG_DIR||require('path').join(require('os').homedir(),'.qoder'),'hud','omq-hud.mjs'),0o755);console.log('Done')}"
 ```
 
 **Step 5:** Update settings.json to use the HUD:
 
-Read `${CLAUDE_CONFIG_DIR:-~/.qoder}/settings.json`, then update/add the `statusLine` field.
+Read `${QODER_CONFIG_DIR:-$HOME/.qoder}/settings.json`, then update/add the `statusLine` field.
 
 **IMPORTANT:** Do not use `~` in the command. On Unix, use `$HOME` to keep the path portable across machines. On Windows, use an absolute path because Windows does not expand `~` in shell commands.
 
@@ -80,7 +80,7 @@ Then set the `statusLine` field. On Unix it should stay portable and look like:
 {
   "statusLine": {
     "type": "command",
-    "command": "node ${CLAUDE_CONFIG_DIR:-$HOME/.qoder}/hud/omq-hud.mjs"
+    "command": "node ${QODER_CONFIG_DIR:-$HOME/.qoder}/hud/omq-hud.mjs"
   }
 }
 ```
@@ -99,7 +99,7 @@ Use the Edit tool to add/update this field while preserving other settings.
 
 **Step 6:** Clean up old HUD scripts (if any):
 ```bash
-node -e "const p=require('path'),f=require('fs'),d=process.env.CLAUDE_CONFIG_DIR||p.join(require('os').homedir(),'.qoder'),t=p.join(d,'hud','omq-hud.js');try{if(f.existsSync(t)){f.unlinkSync(t);console.log('Removed legacy omq-hud.js')}else{console.log('No legacy script found')}}catch{}"
+node -e "const p=require('path'),f=require('fs'),d=process.env.QODER_CONFIG_DIR||p.join(require('os').homedir(),'.qoder'),t=p.join(d,'hud','omq-hud.js');try{if(f.existsSync(t)){f.unlinkSync(t);console.log('Removed legacy omq-hud.js')}else{console.log('No legacy script found')}}catch{}"
 ```
 
 **Step 7:** Tell the user to restart Qoder CLI for changes to take effect.
@@ -159,7 +159,7 @@ When agents are running, the HUD shows detailed information on separate lines:
 
 ## Configuration Location
 
-HUD config is stored in `~/.qoder/settings.json` under the `omqHud` key (or your custom config directory if `CLAUDE_CONFIG_DIR` is set).
+HUD config is stored in `~/.qoder/settings.json` under the `omqHud` key (or your custom config directory if `QODER_CONFIG_DIR` is set).
 
 Legacy config location (deprecated): `~/.qoder/.omq/hud-config.json`
 
@@ -238,12 +238,12 @@ If the HUD is not showing:
 2. Restart Qoder CLI after setup completes
 3. If still not working, run `/oh-my-qoder:omq-doctor` for full diagnostics
 
-**Legacy string format migration:** Older OMQ versions wrote `statusLine` as a plain string (e.g., `"~/.qoder/hud/omq-hud.mjs"`). Modern Qoder CLI (v2.1+) requires an object format. Running the installer or `/oh-my-qoder:hud setup` will auto-migrate legacy strings to the correct object format:
+**Legacy string format migration:** Older OMQ versions wrote `statusLine` as a plain string pointing at the default HUD script. Modern Qoder CLI (v2.1+) requires an object format. Running the installer or `/oh-my-qoder:hud setup` will auto-migrate legacy strings to the correct object format:
 ```json
 {
   "statusLine": {
     "type": "command",
-    "command": "node ${CLAUDE_CONFIG_DIR:-$HOME/.qoder}/hud/omq-hud.mjs"
+    "command": "node ${QODER_CONFIG_DIR:-$HOME/.qoder}/hud/omq-hud.mjs"
   }
 }
 ```

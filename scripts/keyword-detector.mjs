@@ -273,7 +273,7 @@ const PASTED_MAGIC_KEYWORD_HEADER_PATTERN =
 const ROLE_BOUNDARY_PATTERN =
   /^<\s*\/?\s*(system|human|assistant|user|tool_use|tool_result)\b[^>]*>/i;
 const SKILL_TRANSCRIPT_LINE_PATTERN =
-  /^\s*Skill:\s+oh-my-(?:claudecode|codex):/i;
+  /^\s*Skill:\s+oh-my-(qoder|claudecode|codex):/i;
 const USER_REQUEST_LINE_PATTERN = /^\s*User request(?:\s*\([^)]*\))?:\s*$/i;
 const SHELL_TRANSCRIPT_LINE_PATTERN = /^\s*[$%❯]\s+/;
 const GIT_DIFF_START_PATTERNS = [
@@ -599,7 +599,7 @@ function hasActivationIntentNearKeyword(context, keyword) {
 
 function hasDirectInvocationPrefix(text, position) {
   const prefix = text.slice(0, position);
-  return /^\s*(?:[$/!]\s*|force:\s*|oh-my-(?:claudecode|codex):\s*)?$/i.test(prefix);
+  return /^\s*(?:[$/!]\s*|force:\s*|oh-my-(qoder|claudecode|codex):\s*)?$/i.test(prefix);
 }
 
 function hasExplicitInvocationContext(text, position, keywordLength, keywordText) {
@@ -726,7 +726,7 @@ function hasActionableKeyword(text, pattern) {
 
 function hasExplicitWorkflowInvocationContext(text, position, keywordLength, keywordText) {
   const prefix = text.slice(0, position);
-  if (/^\s*(?:[$/!]\s*|force:\s*|oh-my-(?:claudecode|codex):\s*)$/i.test(prefix)) {
+  if (/^\s*(?:[$/!]\s*|force:\s*|oh-my-(qoder|claudecode|codex):\s*)$/i.test(prefix)) {
     return true;
   }
 
@@ -964,7 +964,7 @@ function linkRalphTeam(directory, sessionId, omqRoot) {
 
 /**
  * Check if the team feature is enabled in Qoder CLI settings.
- * Reads settings.json from [$QODER_CONFIG_DIR|~/.claude] and checks for
+ * Reads settings.json from [$QODER_CONFIG_DIR|~/.qoder] and checks for
  * CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS env var.
  * @returns {boolean} true if team feature is enabled
  */

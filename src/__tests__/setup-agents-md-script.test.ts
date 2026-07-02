@@ -14,13 +14,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const REPO_ROOT = join(__dirname, '..', '..');
-const SETUP_SCRIPT = join(REPO_ROOT, 'scripts', 'setup-claude-md.sh');
+const SETUP_SCRIPT = join(REPO_ROOT, 'scripts', 'setup-agents-md.sh');
 const CONFIG_DIR_HELPER = join(REPO_ROOT, 'scripts', 'lib', 'config-dir.sh');
 
 const tempRoots: string[] = [];
 
 function createPluginFixture(claudeMdContent: string) {
-  const root = mkdtempSync(join(tmpdir(), 'omq-setup-claude-md-'));
+  const root = mkdtempSync(join(tmpdir(), 'omq-setup-agents-md-'));
   tempRoots.push(root);
 
   const pluginRoot = join(root, 'plugin');
@@ -33,7 +33,7 @@ function createPluginFixture(claudeMdContent: string) {
   mkdirSync(projectRoot, { recursive: true });
   mkdirSync(homeRoot, { recursive: true });
 
-  copyFileSync(SETUP_SCRIPT, join(pluginRoot, 'scripts', 'setup-claude-md.sh'));
+  copyFileSync(SETUP_SCRIPT, join(pluginRoot, 'scripts', 'setup-agents-md.sh'));
   copyFileSync(CONFIG_DIR_HELPER, join(pluginRoot, 'scripts', 'lib', 'config-dir.sh'));
   writeFileSync(join(pluginRoot, 'docs', 'CLAUDE.md'), claudeMdContent);
   writeFileSync(join(pluginRoot, 'skills', 'omq-reference', 'SKILL.md'), `---
@@ -49,7 +49,7 @@ user-invocable: false
     pluginRoot,
     projectRoot,
     homeRoot,
-    scriptPath: join(pluginRoot, 'scripts', 'setup-claude-md.sh'),
+    scriptPath: join(pluginRoot, 'scripts', 'setup-agents-md.sh'),
   };
 }
 
@@ -62,12 +62,12 @@ afterEach(() => {
   }
 });
 
-describe('setup-claude-md.sh (issue #1572)', () => {
+describe('setup-agents-md.sh (issue #1572)', () => {
   it('installs the canonical docs/CLAUDE.md content with OMQ markers', () => {
     const fixture = createPluginFixture(`<!-- OMQ:START -->
 <!-- OMQ:VERSION:9.9.9 -->
 
-# Canonical CLAUDE
+# Canonical AGENTS
 Use the real docs file.
 <!-- OMQ:END -->
 `);
@@ -90,7 +90,7 @@ Use the real docs file.
     expect(installed).toContain('<!-- OMQ:START -->');
     expect(installed).toContain('<!-- OMQ:END -->');
     expect(installed).toContain('<!-- OMQ:VERSION:9.9.9 -->');
-    expect(installed).toContain('# Canonical CLAUDE');
+    expect(installed).toContain('# Canonical AGENTS');
 
     const installedSkillPath = join(fixture.projectRoot, '.qoder', 'skills', 'omq-reference', 'SKILL.md');
     expect(existsSync(installedSkillPath)).toBe(true);
@@ -100,7 +100,7 @@ Use the real docs file.
   it('refuses to install a canonical source that lacks OMQ markers', () => {
     const fixture = createPluginFixture(`# oh-my-qoder (OMQ) v9.9.9 Summary
 
-This is a summarized CLAUDE.md without markers.
+This is a summarized AGENTS.md without markers.
 `);
 
     const result = spawnSync('bash', [fixture.scriptPath, 'local'], {
@@ -121,7 +121,7 @@ This is a summarized CLAUDE.md without markers.
     const fixture = createPluginFixture(`<!-- OMQ:START -->
 <!-- OMQ:VERSION:9.9.9 -->
 
-# Canonical CLAUDE
+# Canonical AGENTS
 Use the real docs file.
 <!-- OMQ:END -->
 `);
@@ -164,7 +164,7 @@ Use the real docs file.
     const fixture = createPluginFixture(`<!-- OMQ:START -->
 <!-- OMQ:VERSION:9.9.9 -->
 
-# Canonical CLAUDE
+# Canonical AGENTS
 Use the real docs file.
 <!-- OMQ:END -->
 `);
@@ -209,7 +209,7 @@ Use the real docs file.
     const fixture = createPluginFixture(`<!-- OMQ:START -->
 <!-- OMQ:VERSION:9.9.9 -->
 
-# Canonical CLAUDE
+# Canonical AGENTS
 Use the real docs file.
 <!-- OMQ:END -->
 `);
@@ -298,7 +298,7 @@ Use the real docs file.
     const fixture = createPluginFixture(`<!-- OMQ:START -->
 <!-- OMQ:VERSION:9.9.9 -->
 
-# Canonical CLAUDE
+# Canonical AGENTS
 Use the real docs file.
 <!-- OMQ:END -->
 `);
@@ -343,7 +343,7 @@ ${result.stderr}`).toContain('Updated OMQ git exclude for local OMX artifacts');
     const fixture = createPluginFixture(`<!-- OMQ:START -->
 <!-- OMQ:VERSION:9.9.9 -->
 
-# Canonical CLAUDE
+# Canonical AGENTS
 Use the real docs file.
 <!-- OMQ:END -->
 `);
@@ -386,7 +386,7 @@ Use the real docs file.
     const fixture = createPluginFixture(`<!-- OMQ:START -->
 <!-- OMQ:VERSION:9.9.9 -->
 
-# Canonical CLAUDE
+# Canonical AGENTS
 Use the real docs file.
 <!-- OMQ:END -->
 `);
@@ -413,18 +413,18 @@ Use the real docs file.
     expect(`${result.stdout}\n${result.stderr}`).toContain('Plugin verified');
   });
 
-  it('overwrites an existing global CLAUDE.md by default when preserve mode is not requested', () => {
+  it('overwrites an existing global AGENTS.md by default when preserve mode is not requested', () => {
     const fixture = createPluginFixture(`<!-- OMQ:START -->
 <!-- OMQ:VERSION:9.9.9 -->
 
-# Canonical CLAUDE
+# Canonical AGENTS
 Use the real docs file.
 <!-- OMQ:END -->
 `);
 
     const configDir = join(fixture.homeRoot, 'custom-profile');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'AGENTS.md'), '# User CLAUDE\nKeep my base config.\n');
+    writeFileSync(join(configDir, 'AGENTS.md'), '# User AGENTS\nKeep my base config.\n');
     writeFileSync(join(configDir, 'settings.json'), JSON.stringify({ plugins: ['oh-my-qoder'] }));
 
     const result = spawnSync('bash', [fixture.scriptPath, 'global'], {
@@ -439,26 +439,26 @@ Use the real docs file.
 
     expect(result.status).toBe(0);
 
-    const baseClaude = readFileSync(join(configDir, 'AGENTS.md'), 'utf-8');
-    expect(baseClaude).toContain('<!-- OMQ:START -->');
-    expect(baseClaude).toContain('<!-- OMQ:END -->');
-    expect(baseClaude).toContain('<!-- User customizations (migrated from previous AGENTS.md) -->');
-    expect(baseClaude).toContain('# User CLAUDE');
+    const baseAgents = readFileSync(join(configDir, 'AGENTS.md'), 'utf-8');
+    expect(baseAgents).toContain('<!-- OMQ:START -->');
+    expect(baseAgents).toContain('<!-- OMQ:END -->');
+    expect(baseAgents).toContain('<!-- User customizations (migrated from previous AGENTS.md) -->');
+    expect(baseAgents).toContain('# User AGENTS');
     expect(existsSync(join(configDir, 'AGENTS-omq.md'))).toBe(false);
   });
 
-  it('preserves an existing global CLAUDE.md when preserve mode is explicitly requested', () => {
+  it('preserves an existing global AGENTS.md when preserve mode is explicitly requested', () => {
     const fixture = createPluginFixture(`<!-- OMQ:START -->
 <!-- OMQ:VERSION:9.9.9 -->
 
-# Canonical CLAUDE
+# Canonical AGENTS
 Use the real docs file.
 <!-- OMQ:END -->
 `);
 
     const configDir = join(fixture.homeRoot, 'custom-profile');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'AGENTS.md'), '# User CLAUDE\nKeep my base config.\n');
+    writeFileSync(join(configDir, 'AGENTS.md'), '# User AGENTS\nKeep my base config.\n');
     writeFileSync(join(configDir, 'settings.json'), JSON.stringify({ plugins: ['oh-my-qoder'] }));
 
     const result = spawnSync('bash', [fixture.scriptPath, 'global', 'preserve'], {
@@ -473,34 +473,34 @@ Use the real docs file.
 
     expect(result.status).toBe(0);
 
-    const baseClaude = readFileSync(join(configDir, 'AGENTS.md'), 'utf-8');
-    const companionClaude = readFileSync(join(configDir, 'AGENTS-omq.md'), 'utf-8');
+    const baseAgents = readFileSync(join(configDir, 'AGENTS.md'), 'utf-8');
+    const companionAgents = readFileSync(join(configDir, 'AGENTS-omq.md'), 'utf-8');
 
-    expect(baseClaude).toContain('# User CLAUDE');
-    expect(baseClaude).toContain('Keep my base config.');
-    expect(baseClaude).toContain('<!-- OMQ:IMPORT:START -->');
-    expect(baseClaude).toContain('@AGENTS-omq.md');
-    expect(baseClaude).toContain('<!-- OMQ:IMPORT:END -->');
-    expect(baseClaude).not.toContain('<!-- OMQ:START -->');
+    expect(baseAgents).toContain('# User AGENTS');
+    expect(baseAgents).toContain('Keep my base config.');
+    expect(baseAgents).toContain('<!-- OMQ:IMPORT:START -->');
+    expect(baseAgents).toContain('@AGENTS-omq.md');
+    expect(baseAgents).toContain('<!-- OMQ:IMPORT:END -->');
+    expect(baseAgents).not.toContain('<!-- OMQ:START -->');
 
-    expect(companionClaude).toContain('<!-- OMQ:START -->');
-    expect(companionClaude).toContain('<!-- OMQ:END -->');
-    expect(companionClaude).toContain('<!-- OMQ:VERSION:9.9.9 -->');
-    expect(companionClaude).toContain('# Canonical CLAUDE');
+    expect(companionAgents).toContain('<!-- OMQ:START -->');
+    expect(companionAgents).toContain('<!-- OMQ:END -->');
+    expect(companionAgents).toContain('<!-- OMQ:VERSION:9.9.9 -->');
+    expect(companionAgents).toContain('# Canonical AGENTS');
   });
 
   it('updates the preserved companion file idempotently without duplicating the managed import block', () => {
     const fixture = createPluginFixture(`<!-- OMQ:START -->
 <!-- OMQ:VERSION:9.9.9 -->
 
-# Canonical CLAUDE
+# Canonical AGENTS
 Use the real docs file.
 <!-- OMQ:END -->
 `);
 
     const configDir = join(fixture.homeRoot, 'custom-profile');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'AGENTS.md'), '# User CLAUDE\nKeep my base config.\n');
+    writeFileSync(join(configDir, 'AGENTS.md'), '# User AGENTS\nKeep my base config.\n');
     writeFileSync(join(configDir, 'settings.json'), JSON.stringify({ plugins: ['oh-my-qoder'] }));
 
     const env = {
@@ -523,9 +523,9 @@ Use the real docs file.
     });
     expect(second.status).toBe(0);
 
-    const baseClaude = readFileSync(join(configDir, 'AGENTS.md'), 'utf-8');
-    expect(baseClaude.match(/<!-- OMQ:IMPORT:START -->/g)).toHaveLength(1);
-    expect(baseClaude.match(/@AGENTS-omq\.md/g)).toHaveLength(1);
+    const baseAgents = readFileSync(join(configDir, 'AGENTS.md'), 'utf-8');
+    expect(baseAgents.match(/<!-- OMQ:IMPORT:START -->/g)).toHaveLength(1);
+    expect(baseAgents.match(/@AGENTS-omq\.md/g)).toHaveLength(1);
     expect(readFileSync(join(configDir, 'AGENTS-omq.md'), 'utf-8')).toContain('<!-- OMQ:VERSION:9.9.9 -->');
   });
 
@@ -533,14 +533,14 @@ Use the real docs file.
     const fixture = createPluginFixture(`<!-- OMQ:START -->
 <!-- OMQ:VERSION:9.9.9 -->
 
-# Canonical CLAUDE
+# Canonical AGENTS
 Use the real docs file.
 <!-- OMQ:END -->
 `);
 
     const configDir = join(fixture.homeRoot, 'custom-profile');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'AGENTS.md'), '# User CLAUDE\nKeep my base config.\n');
+    writeFileSync(join(configDir, 'AGENTS.md'), '# User AGENTS\nKeep my base config.\n');
     writeFileSync(join(configDir, 'settings.json'), JSON.stringify({ plugins: ['oh-my-qoder'] }));
 
     const env = {
@@ -570,29 +570,29 @@ Use the real docs file.
     // Companion file must be removed
     expect(existsSync(join(configDir, 'AGENTS-omq.md'))).toBe(false);
 
-    // CLAUDE.md must have OMQ markers inline, not an import block
-    const baseClaude = readFileSync(join(configDir, 'AGENTS.md'), 'utf-8');
-    expect(baseClaude).toContain('<!-- OMQ:START -->');
-    expect(baseClaude).toContain('<!-- OMQ:END -->');
-    expect(baseClaude).not.toContain('<!-- OMQ:IMPORT:START -->');
-    expect(baseClaude).not.toContain('@AGENTS-omq.md');
+    // AGENTS.md must have OMQ markers inline, not an import block
+    const baseAgents = readFileSync(join(configDir, 'AGENTS.md'), 'utf-8');
+    expect(baseAgents).toContain('<!-- OMQ:START -->');
+    expect(baseAgents).toContain('<!-- OMQ:END -->');
+    expect(baseAgents).not.toContain('<!-- OMQ:IMPORT:START -->');
+    expect(baseAgents).not.toContain('@AGENTS-omq.md');
 
     // User content should be preserved
-    expect(baseClaude).toContain('# User CLAUDE');
+    expect(baseAgents).toContain('# User AGENTS');
   });
 
   it('refuses preserve mode when the companion path is a symlink', () => {
     const fixture = createPluginFixture(`<!-- OMQ:START -->
 <!-- OMQ:VERSION:9.9.9 -->
 
-# Canonical CLAUDE
+# Canonical AGENTS
 Use the real docs file.
 <!-- OMQ:END -->
 `);
 
     const configDir = join(fixture.homeRoot, 'custom-profile');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'AGENTS.md'), '# User CLAUDE\nKeep my base config.\n');
+    writeFileSync(join(configDir, 'AGENTS.md'), '# User AGENTS\nKeep my base config.\n');
     writeFileSync(join(configDir, 'settings.json'), JSON.stringify({ plugins: ['oh-my-qoder'] }));
 
     const realTarget = join(fixture.homeRoot, 'outside-target.md');
@@ -615,7 +615,7 @@ Use the real docs file.
   });
 });
 
-describe('setup-claude-md.sh stale QODER_PLUGIN_ROOT resolution', () => {
+describe('setup-agents-md.sh stale QODER_PLUGIN_ROOT resolution', () => {
   it('does not prefer a newer cache directory when it is missing required plugin assets', () => {
     const root = mkdtempSync(join(tmpdir(), 'omq-stale-invalid-newer-cache-'));
     tempRoots.push(root);
@@ -628,7 +628,7 @@ describe('setup-claude-md.sh stale QODER_PLUGIN_ROOT resolution', () => {
 
     mkdirSync(join(oldVersion, 'scripts'), { recursive: true });
     mkdirSync(join(oldVersion, 'docs'), { recursive: true });
-    copyFileSync(SETUP_SCRIPT, join(oldVersion, 'scripts', 'setup-claude-md.sh'));
+    copyFileSync(SETUP_SCRIPT, join(oldVersion, 'scripts', 'setup-agents-md.sh'));
     mkdirSync(join(oldVersion, 'scripts', 'lib'), { recursive: true });
     copyFileSync(CONFIG_DIR_HELPER, join(oldVersion, 'scripts', 'lib', 'config-dir.sh'));
     writeFileSync(
@@ -656,7 +656,7 @@ describe('setup-claude-md.sh stale QODER_PLUGIN_ROOT resolution', () => {
     mkdirSync(join(homeRoot, '.qwen'), { recursive: true });
     writeFileSync(join(homeRoot, '.qwen', 'settings.json'), JSON.stringify({ plugins: ['oh-my-qoder'] }));
 
-    const result = spawnSync('bash', [join(oldVersion, 'scripts', 'setup-claude-md.sh'), 'local'], {
+    const result = spawnSync('bash', [join(oldVersion, 'scripts', 'setup-agents-md.sh'), 'local'], {
       cwd: projectRoot,
       env: {
         ...process.env,
@@ -686,7 +686,7 @@ describe('setup-claude-md.sh stale QODER_PLUGIN_ROOT resolution', () => {
 
     mkdirSync(join(oldVersion, 'scripts'), { recursive: true });
     mkdirSync(join(oldVersion, 'docs'), { recursive: true });
-    copyFileSync(SETUP_SCRIPT, join(oldVersion, 'scripts', 'setup-claude-md.sh'));
+    copyFileSync(SETUP_SCRIPT, join(oldVersion, 'scripts', 'setup-agents-md.sh'));
     mkdirSync(join(oldVersion, 'scripts', 'lib'), { recursive: true });
     copyFileSync(CONFIG_DIR_HELPER, join(oldVersion, 'scripts', 'lib', 'config-dir.sh'));
     writeFileSync(join(oldVersion, 'docs', 'CLAUDE.md'), `<!-- OMQ:START -->\n<!-- OMQ:VERSION:4.8.2 -->\n# Old\n<!-- OMQ:END -->\n`);
@@ -703,7 +703,7 @@ describe('setup-claude-md.sh stale QODER_PLUGIN_ROOT resolution', () => {
     writeFileSync(join(homeRoot, '.qwen', 'settings.json'), JSON.stringify({ plugins: ['oh-my-qoder'] }));
 
     // No installed_plugins.json => fallback scan path
-    const result = spawnSync('bash', [join(oldVersion, 'scripts', 'setup-claude-md.sh'), 'local'], {
+    const result = spawnSync('bash', [join(oldVersion, 'scripts', 'setup-agents-md.sh'), 'local'], {
       cwd: projectRoot,
       env: {
         ...process.env,
@@ -733,7 +733,7 @@ describe('setup-claude-md.sh stale QODER_PLUGIN_ROOT resolution', () => {
     // Script runs from old version path
     mkdirSync(join(oldVersion, 'scripts'), { recursive: true });
     mkdirSync(join(oldVersion, 'docs'), { recursive: true });
-    copyFileSync(SETUP_SCRIPT, join(oldVersion, 'scripts', 'setup-claude-md.sh'));
+    copyFileSync(SETUP_SCRIPT, join(oldVersion, 'scripts', 'setup-agents-md.sh'));
     mkdirSync(join(oldVersion, 'scripts', 'lib'), { recursive: true });
     copyFileSync(CONFIG_DIR_HELPER, join(oldVersion, 'scripts', 'lib', 'config-dir.sh'));
     writeFileSync(
@@ -771,7 +771,7 @@ describe('setup-claude-md.sh stale QODER_PLUGIN_ROOT resolution', () => {
 
     const result = spawnSync(
       'bash',
-      [join(oldVersion, 'scripts', 'setup-claude-md.sh'), 'local'],
+      [join(oldVersion, 'scripts', 'setup-agents-md.sh'), 'local'],
       {
         cwd: projectRoot,
         env: {
@@ -805,7 +805,7 @@ describe('setup-claude-md.sh stale QODER_PLUGIN_ROOT resolution', () => {
     // Create old version (where the script will be copied)
     mkdirSync(join(oldVersion, 'scripts'), { recursive: true });
     mkdirSync(join(oldVersion, 'docs'), { recursive: true });
-    copyFileSync(SETUP_SCRIPT, join(oldVersion, 'scripts', 'setup-claude-md.sh'));
+    copyFileSync(SETUP_SCRIPT, join(oldVersion, 'scripts', 'setup-agents-md.sh'));
     mkdirSync(join(oldVersion, 'scripts', 'lib'), { recursive: true });
     copyFileSync(CONFIG_DIR_HELPER, join(oldVersion, 'scripts', 'lib', 'config-dir.sh'));
     writeFileSync(
@@ -845,7 +845,7 @@ describe('setup-claude-md.sh stale QODER_PLUGIN_ROOT resolution', () => {
     // Run the OLD version's script — it should resolve to the NEW version's docs/CLAUDE.md
     const result = spawnSync(
       'bash',
-      [join(oldVersion, 'scripts', 'setup-claude-md.sh'), 'local'],
+      [join(oldVersion, 'scripts', 'setup-agents-md.sh'), 'local'],
       {
         cwd: projectRoot,
         env: {
@@ -878,7 +878,7 @@ describe('setup-claude-md.sh stale QODER_PLUGIN_ROOT resolution', () => {
 
     mkdirSync(join(oldVersion, 'scripts'), { recursive: true });
     mkdirSync(join(oldVersion, 'docs'), { recursive: true });
-    copyFileSync(SETUP_SCRIPT, join(oldVersion, 'scripts', 'setup-claude-md.sh'));
+    copyFileSync(SETUP_SCRIPT, join(oldVersion, 'scripts', 'setup-agents-md.sh'));
     mkdirSync(join(oldVersion, 'scripts', 'lib'), { recursive: true });
     copyFileSync(CONFIG_DIR_HELPER, join(oldVersion, 'scripts', 'lib', 'config-dir.sh'));
     writeFileSync(
@@ -916,7 +916,7 @@ describe('setup-claude-md.sh stale QODER_PLUGIN_ROOT resolution', () => {
 
     const result = spawnSync(
       'bash',
-      [join(oldVersion, 'scripts', 'setup-claude-md.sh'), 'local'],
+      [join(oldVersion, 'scripts', 'setup-agents-md.sh'), 'local'],
       {
         cwd: projectRoot,
         env: {
@@ -949,7 +949,7 @@ describe('setup-claude-md.sh stale QODER_PLUGIN_ROOT resolution', () => {
     // Create old version (where the script lives)
     mkdirSync(join(oldVersion, 'scripts'), { recursive: true });
     mkdirSync(join(oldVersion, 'docs'), { recursive: true });
-    copyFileSync(SETUP_SCRIPT, join(oldVersion, 'scripts', 'setup-claude-md.sh'));
+    copyFileSync(SETUP_SCRIPT, join(oldVersion, 'scripts', 'setup-agents-md.sh'));
     mkdirSync(join(oldVersion, 'scripts', 'lib'), { recursive: true });
     copyFileSync(CONFIG_DIR_HELPER, join(oldVersion, 'scripts', 'lib', 'config-dir.sh'));
     writeFileSync(
@@ -974,7 +974,7 @@ describe('setup-claude-md.sh stale QODER_PLUGIN_ROOT resolution', () => {
 
     const result = spawnSync(
       'bash',
-      [join(oldVersion, 'scripts', 'setup-claude-md.sh'), 'local'],
+      [join(oldVersion, 'scripts', 'setup-agents-md.sh'), 'local'],
       {
         cwd: projectRoot,
         env: {

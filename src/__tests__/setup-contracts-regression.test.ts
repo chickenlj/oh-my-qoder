@@ -102,8 +102,8 @@ describe('Contract 1: no join(homedir()...".qwen") outside canonical helpers', (
   const EXCLUDED_FILE = 'src/utils/config-dir.ts';
   // Functions that legitimately need to reference ~/.qwen as a default/comparison
   const EXCLUDED_FUNCTIONS = [
-    'isDefaultClaudeConfigDir',
-    'isDefaultClaudeConfigDirPath',
+    'isDefaultQoderConfigDir',
+    'isDefaultQoderConfigDirPath',
     'prepareOmqLaunchConfigDir', // entry-point with its own QODER_CONFIG_DIR || fallback
   ];
 

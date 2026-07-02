@@ -657,7 +657,7 @@ async function checkForUpdates(currentVersion) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 2000);
   try {
-    const response = await fetch('https://raw.githubusercontent.com/chickenlj/oh-my-qoder/main/package.json', {
+    const response = await fetch('https://raw.githubusercontent.com/spring-ai-alibaba/oh-my-qoder/main/package.json', {
       signal: controller.signal
     });
     if (!response.ok) return null;
@@ -908,9 +908,9 @@ Treat this as prior-session context only. Prioritize the user's newest request, 
     }
 
     // Check for incomplete todos (project-local only, not global
-    // [$QODER_CONFIG_DIR|~/.claude]/todos/)
+    // [$QODER_CONFIG_DIR|~/.qoder]/todos/)
     // NOTE: We intentionally do NOT scan the global
-    // [$QODER_CONFIG_DIR|~/.claude]/todos/ directory.
+    // [$QODER_CONFIG_DIR|~/.qoder]/todos/ directory.
     // That directory accumulates todo files from ALL past sessions across all
     // projects, causing phantom task counts in fresh sessions (see issue #354).
     const localTodoPaths = [
