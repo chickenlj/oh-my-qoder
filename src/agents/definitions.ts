@@ -1,5 +1,5 @@
 /**
- * Agent Definitions for Oh-My-ClaudeCode
+ * Agent Definitions for Oh-My-Qoder
  *
  * This module provides:
  * 1. Re-exports of base agents from individual files
@@ -197,7 +197,7 @@ function getConfiguredAgentModel(name: string, config: PluginConfig): string | u
  */
 
 /**
- * Get all agent definitions as a record for use with Claude Agent SDK
+ * Get all agent definitions as a record for use with Qoder Agent SDK
  */
 export function getAgentDefinitions(options?: {
   overrides?: Partial<Record<string, Partial<AgentConfig>>>;

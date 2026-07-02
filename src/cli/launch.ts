@@ -27,7 +27,7 @@ import {
   buildTmuxShellCommandWithEnv,
   isNativeWindowsShell,
   wrapWithLoginShell,
-  isClaudeAvailable,
+  isQoderCliAvailable,
   isTmuxAvailable,
   quoteShellArg,
   tmuxExec,
@@ -184,8 +184,8 @@ export function prepareOmqLaunchConfigDir(baseConfigDir = getQoderConfigDir()): 
   return runtimeConfigDir;
 }
 
-function isDefaultClaudeConfigDirPath(configDir: string): boolean {
-  return configDir === join(homedir(), '.claude');
+function isDefaultQoderConfigDirPath(configDir: string): boolean {
+  return configDir === join(homedir(), '.qoder');
 }
 
 /**
@@ -766,14 +766,14 @@ export async function launchCommand(args: string[]): Promise<void> {
   }
 
   // Pre-flight: check qodercli availability
-  if (!isClaudeAvailable()) {
+  if (!isQoderCliAvailable()) {
     console.error('[omq] Error: qodercli not found. Install Qoder CLI first:');
-    console.error('  npm install -g @qoder-ai/qoder-cli');
+    console.error('  curl -fsSL https://qoder.com/install | bash');
     process.exit(1);
   }
 
   const launchConfigDir = prepareOmqLaunchConfigDir();
-  if (isDefaultClaudeConfigDirPath(launchConfigDir)) {
+  if (isDefaultQoderConfigDirPath(launchConfigDir)) {
     delete process.env.QODER_CONFIG_DIR;
   } else {
     process.env.QODER_CONFIG_DIR = launchConfigDir;

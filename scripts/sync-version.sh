@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # sync-version.sh — called by npm "version" lifecycle hook
 # Syncs the version from package.json to all satellite files:
-#   - .claude-plugin/plugin.json
-#   - .claude-plugin/marketplace.json
+#   - .qoder-plugin/plugin.json
+#   - .qoder-plugin/marketplace.json
 #   - docs/CLAUDE.md (OMQ:VERSION marker)
 #
 # Usage: automatically invoked by `npm version <bump>`
@@ -15,15 +15,15 @@ VERSION="${1:-$(node -p "require('$ROOT/package.json').version")}"
 
 echo "🔄 Syncing version $VERSION to satellite files..."
 
-# 1. .claude-plugin/plugin.json
-PLUGIN="$ROOT/.claude-plugin/plugin.json"
+# 1. .qoder-plugin/plugin.json
+PLUGIN="$ROOT/.qoder-plugin/plugin.json"
 if [ -f "$PLUGIN" ]; then
   perl -i -pe "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" "$PLUGIN"
   echo "  ✓ plugin.json → $VERSION"
 fi
 
-# 2. .claude-plugin/marketplace.json (has 2 version fields)
-MARKET="$ROOT/.claude-plugin/marketplace.json"
+# 2. .qoder-plugin/marketplace.json (has 2 version fields)
+MARKET="$ROOT/.qoder-plugin/marketplace.json"
 if [ -f "$MARKET" ]; then
   perl -i -pe "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/g" "$MARKET"
   echo "  ✓ marketplace.json → $VERSION"

@@ -184,7 +184,7 @@ const CONTRACTS: Record<CliAgentType, CliAgentContract> = {
   qwen: {
     agentType: 'qwen',
     binary: 'qodercli',
-    installInstructions: 'Install Qoder CLI: npm install -g @qoder-ai/qoder-cli',
+    installInstructions: 'Install Qoder CLI: curl -fsSL https://qoder.com/install | bash',
     buildLaunchArgs(model?: string, extraFlags: string[] = []): string[] {
       const args = ['--dangerously-skip-permissions'];
       if (shouldUseClaudeBareMode() && !extraFlags.includes('--bare')) {

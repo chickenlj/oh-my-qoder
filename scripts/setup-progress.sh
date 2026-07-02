@@ -129,7 +129,7 @@ cmd_complete() {
   trap - RETURN
 
   echo "Setup completed successfully!"
-  echo "Note: Future updates will only refresh CLAUDE.md, not the full setup wizard."
+  echo "Note: Future updates will only refresh AGENTS.md, not the full setup wizard."
 }
 
 # Main dispatch

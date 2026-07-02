@@ -31,7 +31,7 @@ vi.mock('../tmux-utils.js', () => ({
   isNativeWindowsShell: vi.fn(() => false),
   wrapWithLoginShell: vi.fn((cmd: string) => cmd),
   quoteShellArg: vi.fn((s: string) => s),
-  isClaudeAvailable: vi.fn(() => true),
+  isQoderCliAvailable: vi.fn(() => true),
   isTmuxAvailable: vi.fn(() => true),
   tmuxExec: vi.fn(),
 }));
@@ -1189,8 +1189,8 @@ describe('prepareOmqLaunchConfigDir / launchCommand OMQ companion loading', () =
     expect(existsSync(join(configDir, '.omq-launch'))).toBe(false);
   });
 
-  it('does not keep QODER_CONFIG_DIR set when it resolves to the default ~/.claude path', async () => {
-    const configDir = join(tempRoot!, 'home', '.claude');
+  it('does not keep QODER_CONFIG_DIR set when it resolves to the default ~/.qoder path', async () => {
+    const configDir = join(tempRoot!, 'home', '.qoder');
     mkdirSync(configDir, { recursive: true });
     writeFileSync(join(configDir, 'AGENTS.md'), '# User config\n');
     process.env.QODER_CONFIG_DIR = configDir;
@@ -1201,7 +1201,7 @@ describe('prepareOmqLaunchConfigDir / launchCommand OMQ companion loading', () =
   });
 
   it('preserves explicit non-default QODER_CONFIG_DIR values when no companion exists', async () => {
-    const configDir = join(tempRoot!, 'custom-claude');
+    const configDir = join(tempRoot!, 'custom-qoder');
     mkdirSync(configDir, { recursive: true });
     writeFileSync(join(configDir, 'AGENTS.md'), '# Custom user config\n');
     process.env.QODER_CONFIG_DIR = configDir;

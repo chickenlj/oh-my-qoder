@@ -50,7 +50,7 @@ Supported formats:
 {
   "aliases": {
     "omq": {
-      "repo": "Yeachan-Heo/oh-my-qoder",
+      "repo": "spring-ai-alibaba/oh-my-qoder",
       "local": "~/Workspace/oh-my-qoder",
       "default_base": "main"
     }
@@ -564,7 +564,7 @@ if [[ ! -f ~/.psm/projects.json ]]; then
 {
   "aliases": {
     "omq": {
-      "repo": "Yeachan-Heo/oh-my-qoder",
+      "repo": "spring-ai-alibaba/oh-my-qoder",
       "local": "~/Workspace/oh-my-qoder",
       "default_base": "main"
     }

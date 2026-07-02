@@ -562,7 +562,7 @@ async function getTodoStatus(directory) {
   }
 
   // NOTE: We intentionally do NOT scan the global
-  // [$QODER_CONFIG_DIR|~/.claude]/todos/ directory.
+  // [$QODER_CONFIG_DIR|~/.qoder]/todos/ directory.
   // That directory accumulates todo files from ALL past sessions across all
   // projects, causing phantom task counts in fresh sessions (see issue #354).
 
@@ -901,7 +901,7 @@ function generateAgentSpawnMessage(toolInput, stateDir, todoStatus, sessionId) {
       `Task(team_name="${teamName}", name="worker-N", subagent_type="${agentType}"). ` +
       `Do NOT use Task without team_name during an active team session. ` +
       `If TeamCreate is not available in your tools, tell the user to verify ` +
-      'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 is set in [$QODER_CONFIG_DIR|~/.claude]/settings.json. Restart Qoder CLI.';
+      'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 is set in [$QODER_CONFIG_DIR|~/.qoder]/settings.json. Restart Qoder CLI.';
   }
 
   if (QUIET_LEVEL >= 2) return '';
@@ -982,7 +982,7 @@ const SKILL_PROTECTION_MAP = {
 function getSkillProtectionLevel(skillName, rawSkillName) {
   // When rawSkillName is provided, only apply protection to OMQ-prefixed skills.
   // Non-prefixed skills are project custom skills or other plugins — no protection.
-  // See: https://github.com/Yeachan-Heo/oh-my-qoder/issues/1581
+  // See: https://github.com/spring-ai-alibaba/oh-my-qoder/issues/1581
   if (rawSkillName != null && typeof rawSkillName === 'string' &&
       !rawSkillName.toLowerCase().startsWith('oh-my-qoder:')) {
     return 'none';

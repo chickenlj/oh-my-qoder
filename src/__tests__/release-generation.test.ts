@@ -19,8 +19,8 @@ describe('release generation', () => {
     const prNumbers = extractPullRequestNumbers([
       'feat(hud): add configurable call count icon format (#2151)',
       'fix(hud): replace misleading CLI error with installation diagnostic (#2129)',
-      'Merge pull request #2146 from Yeachan-Heo/issue-2143-omq-launch-followup',
-      'Merge pull request #2162 from Yeachan-Heo/release/4.10.2',
+      'Merge pull request #2146 from chickenlj/issue-2143-omq-launch-followup',
+      'Merge pull request #2162 from chickenlj/release/4.10.2',
       'feat(hud): add configurable call count icon format (#2151)',
     ]);
 
@@ -47,20 +47,20 @@ describe('release generation', () => {
   it('derives sorted deduped contributor handles from PR and compare metadata', () => {
     const contributors = deriveContributorLogins(
       [
-        { author: 'Yeachan-Heo' },
+        { author: 'chickenlj' },
         { author: 'blue-int' },
         { author: 'EthanJStark' },
         { author: 'blue-int' },
       ],
-      ['tjsingleton', 'DdangJin', 'Yeachan-Heo', 'EthanJStark', null],
+      ['tjsingleton', 'DdangJin', 'chickenlj', 'EthanJStark', null],
     );
 
     expect(contributors).toEqual([
       'blue-int',
+      'chickenlj',
       'DdangJin',
       'EthanJStark',
       'tjsingleton',
-      'Yeachan-Heo',
     ]);
   });
 
@@ -71,11 +71,11 @@ describe('release generation', () => {
       { number: '2122', title: 'fix(state-tools): add skill-active to STATE_TOOL_MODES so cancel can clear it', author: 'tjsingleton', headRefName: 'fix/cancel-clear-skill-active-state' },
       { number: '2127', title: 'fix(hud): show worktree name instead of volatile main repo HEAD', author: 'blue-int', headRefName: 'fix/hud-worktree-name' },
       { number: '2129', title: 'fix(hud): replace misleading CLI error with installation diagnostic', author: 'DdangJin', headRefName: 'fix/hud-cli-diagnostic' },
-      { number: '2137', title: 'Fix team tmux pane geometry collapse and bundled agent path resolution', author: 'Yeachan-Heo', headRefName: 'fix-issue-2135-pane-geometry' },
-      { number: '2144', title: 'fix: preserve existing global CLAUDE.md during setup', author: 'Yeachan-Heo', headRefName: 'issue-2143-safe-setup-config' },
-      { number: '2146', title: 'fix: follow up #2143 with explicit overwrite choice + omq launch profile', author: 'Yeachan-Heo', headRefName: 'issue-2143-omq-launch-followup' },
-      { number: '2149', title: 'fix: resolve global HUD npm package lookup outside Node projects', author: 'Yeachan-Heo', headRefName: 'fix/issue-2148-hud-global-npm' },
-      { number: '2151', title: 'feat(hud): make call-count icon rendering configurable', author: 'Yeachan-Heo', headRefName: 'issue-2150-hud-call-count-icons' },
+      { number: '2137', title: 'Fix team tmux pane geometry collapse and bundled agent path resolution', author: 'chickenlj', headRefName: 'fix-issue-2135-pane-geometry' },
+      { number: '2144', title: 'fix: preserve existing global CLAUDE.md during setup', author: 'chickenlj', headRefName: 'issue-2143-safe-setup-config' },
+      { number: '2146', title: 'fix: follow up #2143 with explicit overwrite choice + omq launch profile', author: 'chickenlj', headRefName: 'issue-2143-omq-launch-followup' },
+      { number: '2149', title: 'fix: resolve global HUD npm package lookup outside Node projects', author: 'chickenlj', headRefName: 'fix/issue-2148-hud-global-npm' },
+      { number: '2151', title: 'feat(hud): make call-count icon rendering configurable', author: 'chickenlj', headRefName: 'issue-2150-hud-call-count-icons' },
     ];
 
     const categories = categorizeReleaseNoteEntries(
@@ -119,15 +119,15 @@ describe('release generation', () => {
     const body = generateReleaseBody(
       '4.10.2',
       '# oh-my-qoder v4.10.2: Bug Fixes',
-      ['blue-int', 'DdangJin', 'Yeachan-Heo'],
+      ['blue-int', 'DdangJin', 'chickenlj'],
       'v4.10.1',
     );
 
-    expect(body).toContain('git clone https://github.com/chickenlj/oh-my-qoder.git');
+    expect(body).toContain('git clone https://github.com/spring-ai-alibaba/oh-my-qoder.git');
     expect(body).toContain('qodercli plugins install "$(pwd)"');
     expect(body).toContain('git pull && npm run build');
-    expect(body).toContain('https://github.com/chickenlj/oh-my-qoder/compare/v4.10.1...v4.10.2');
-    expect(body).toContain('@blue-int @DdangJin @Yeachan-Heo');
+    expect(body).toContain('https://github.com/spring-ai-alibaba/oh-my-qoder/compare/v4.10.1...v4.10.2');
+    expect(body).toContain('@blue-int @DdangJin @chickenlj');
     expect(body.match(/## Contributors/g)).toHaveLength(1);
   });
 

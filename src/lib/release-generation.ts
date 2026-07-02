@@ -1,5 +1,5 @@
 import { execSync } from 'child_process';
-const DEFAULT_REPO_URL = 'https://github.com/chickenlj/oh-my-qoder';
+const DEFAULT_REPO_URL = 'https://github.com/spring-ai-alibaba/oh-my-qoder';
 
 export interface ReleasePullRequest {
   number: string;
