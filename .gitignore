@@ -2,10 +2,7 @@ node_modules/
 *.log
 .DS_Store
 .omc/
-!.omq/
-.omq/*
-!.omq/skills/
-!.omq/skills/**
+.omq/
 .idea/
 .qoder/
 .env
